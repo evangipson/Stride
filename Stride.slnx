@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/examples/">
+    <Project Path="examples/SimpleStrideApp/SimpleStrideApp.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/Stride.Abstractions/Stride.Abstractions.csproj" />
+    <Project Path="src/Stride.Renderer/Stride.Renderer.csproj" />
+    <Project Path="src/Stride.Core/Stride.Core.csproj" />
+  </Folder>
+</Solution>
