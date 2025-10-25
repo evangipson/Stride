@@ -12,23 +12,18 @@ public class ApplicationRenderService : IApplicationRenderService, IDisposable
     /// <summary>
     /// A reference to the application's drawing area.
     /// </summary>
-    protected SKBitmap? Bitmap;
+    public SKBitmap? Bitmap;
 
     /// <summary>
     /// A managed object for <see cref="Bitmap"/>.
     /// </summary>
-    protected GCHandle BitmapHandle;
+    public GCHandle BitmapHandle;
 
     /// <summary>
     /// A reference to the application's surface.
     /// </summary>
-    protected SKSurface? Surface;
+    public SKSurface? Surface;
 
-    /// <summary>
-    /// Populates <see cref="Bitmap"/>, <see cref="BitmapHandle"/>, and <see cref="Surface"/>.
-    /// </summary>
-    /// <param name="width">The width of the Stride application.</param>
-    /// <param name="height">The height of the Stride application.</param>
     public void SetApplicationCanvas(int width, int height)
     {
         // create the SKBitmap and allocate memory
@@ -41,9 +36,6 @@ public class ApplicationRenderService : IApplicationRenderService, IDisposable
         Surface = SKSurface.Create(Bitmap.Info, BitmapHandle.AddrOfPinnedObject(), Bitmap.RowBytes);
     }
 
-    /// <summary>
-    /// Paints the application.
-    /// </summary>
     public void PaintApplication()
     {
         Surface?.Canvas.Clear(new SKColor(0x00, 0x00, 0x00, 0x20));
@@ -53,6 +45,10 @@ public class ApplicationRenderService : IApplicationRenderService, IDisposable
 
         Surface?.Canvas.Flush();
     }
+
+    public int GetCanvasWidth() => Bitmap?.Width ?? 0;
+
+    public int GetCanvasHeight() => Bitmap?.Height ?? 0;
 
     protected virtual void Dispose(bool disposing)
     {

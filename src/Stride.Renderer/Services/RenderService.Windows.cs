@@ -10,8 +10,10 @@ namespace Stride.Renderer.Services;
 /// <summary>
 /// An implementation of <see cref="IRenderService"/> for the Windows operating system.
 /// </summary>
-public partial class RenderService : ApplicationRenderService, IRenderService
+public partial class RenderService(IApplicationRenderService applicationRenderService) : IRenderService
 {
+    private readonly IApplicationRenderService _applicationRenderService = applicationRenderService ?? throw new ArgumentNullException(nameof(applicationRenderService));
+
     /// <summary>
     /// Handle to a GDI bitmap object.
     /// </summary>
@@ -25,7 +27,29 @@ public partial class RenderService : ApplicationRenderService, IRenderService
     /// <inheritdoc/>
     public void Render(IApplication application)
     {
-        // if there is no window on the application, throw
+        // create a window and get a handle to it, throw if no window could be created
+        var windowHandle = CreateWindow(application);
+        if (windowHandle == nint.Zero)
+        {
+            throw new ApplicationException("Window creation failed.");
+        }
+
+        // apply any customization
+        //ApplyCustomization(windowHandle);
+
+        // apply modernization
+        ApplyModernization(windowHandle);
+
+        // display the window
+        Interop.User.ShowWindow(windowHandle, (int)WindowMessage.Show);
+
+        // start the message loop
+        RunMessageLoop();
+    }
+
+    private nint CreateWindow(IApplication application)
+    {
+        // throw if there is no window on the application
         if (application.Window == null)
         {
             throw new ApplicationException("Stride must have a window to render.");
@@ -56,44 +80,22 @@ public partial class RenderService : ApplicationRenderService, IRenderService
         var height = application.Window.Height.GetValueOrDefault(600);
 
         // populate the inner canvas of the application for painting it later
-        SetApplicationCanvas(width, height);
+        _applicationRenderService.SetApplicationCanvas(width, height);
 
         // setup bitmap info for GDI
         BitmapInfo bitmapInfo = new(width, height, planes: 1, bitCount: 32);
         _gdiBitmap = Interop.Gdi.CreateDIBSection(nint.Zero, ref bitmapInfo, RenderingConstants.DIB_RGB_COLORS, out nint bitsPointer, nint.Zero, 0);
 
-        // create the window
-        nint windowPointer = Interop.User.CreateWindowEx((uint)WindowStyle.SystemMenu, className, application.Name ?? "Stride Application", RenderingConstants.BaseWindowStyle,
+        // create the window and return a handle to it
+        return Interop.User.CreateWindowEx((uint)WindowStyle.SystemMenu, className, application.Name ?? "Stride Application", RenderingConstants.BaseWindowStyle,
             RenderingConstants.UseDefaultWindowSize, RenderingConstants.UseDefaultWindowSize, width, height,
             nint.Zero, nint.Zero, nint.Zero, nint.Zero);
-        if (windowPointer == nint.Zero)
-        {
-            throw new ApplicationException("Window creation failed.");
-        }
-
-        // set global alpha to allow some background to show through initially
-        Interop.User.SetLayeredWindowAttributes(windowPointer, 0, 230, RenderingConstants.LWA_ALPHA);
-
-        // remove the components that define the old title bar, and repaint (to get a mica look)
-        nint currentStyle = Interop.User.SetWindowLongPtr(windowPointer, RenderingConstants.GWL_STYLE, nint.Zero);
-        nint newStyle = (nint)((uint)currentStyle & ~RenderingConstants.StylesToRemove);
-        Interop.User.SetWindowLongPtr(windowPointer, RenderingConstants.GWL_STYLE, newStyle);
-        Interop.User.SetWindowPos(windowPointer, nint.Zero, 0, 0, 0, 0, RenderingConstants.SWP_FRAMECHANGED | RenderingConstants.SWP_NOMOVE | RenderingConstants.SWP_NOSIZE | RenderingConstants.SWP_NOZORDER);
-
-        // apply modernization
-        ApplyModernization(windowPointer);
-
-        // display the window
-        Interop.User.ShowWindow(windowPointer, (int)WindowMessage.Show);
-
-        // start the message loop
-        RunMessageLoop();
     }
 
     private nint WindowMessageProcedure(nint hWnd, uint msg, nint wParam, nint lParam)
         => (WindowMessage)msg switch
         {
-            WindowMessage.EraseBackground => 1,
+            //WindowMessage.EraseBackground => 1,
             WindowMessage.Paint => HandlePaint(hWnd),
             WindowMessage.CompositionChanged => ApplyModernization(hWnd),
             WindowMessage.Close => CloseWindow(),
@@ -130,7 +132,7 @@ public partial class RenderService : ApplicationRenderService, IRenderService
         }
 
         // paint the application (clears and renders any components)
-        PaintApplication();
+        _applicationRenderService.PaintApplication();
 
         // create a memory device context compatible with the window's device context
         nint windowDeviceContext = ps.hdc;
@@ -140,7 +142,9 @@ public partial class RenderService : ApplicationRenderService, IRenderService
         nint oldBitmap = Interop.Gdi.SelectObject(memoryDeviceContext, _gdiBitmap);
 
         // copy pixels from the memory device context to the window device context
-        Interop.Gdi.BitBlt(windowDeviceContext, 0, 0, Bitmap!.Width, Bitmap!.Height, memoryDeviceContext, 0, 0, RenderingConstants.SRCCOPY);
+        var canvasWidth = _applicationRenderService.GetCanvasWidth();
+        var canvasHeight = _applicationRenderService.GetCanvasHeight();
+        Interop.Gdi.BitBlt(windowDeviceContext, 0, 0, canvasWidth, canvasHeight, memoryDeviceContext, 0, 0, RenderingConstants.SRCCOPY);
 
         // clean up the GDI resources (prevent memory leaks)
         Interop.Gdi.SelectObject(memoryDeviceContext, oldBitmap);
@@ -155,6 +159,18 @@ public partial class RenderService : ApplicationRenderService, IRenderService
     {
         Interop.User.PostQuitMessage(0);
         return nint.Zero;
+    }
+
+    private static void ApplyCustomization(nint windowPointer)
+    {
+        // set global alpha to allow some background to show through initially
+        Interop.User.SetLayeredWindowAttributes(windowPointer, 0, 230, RenderingConstants.LWA_ALPHA);
+
+        // remove the components that define the old title bar, and repaint (to get a mica look)
+        nint currentStyle = Interop.User.SetWindowLongPtr(windowPointer, RenderingConstants.GWL_STYLE, nint.Zero);
+        nint newStyle = (nint)((uint)currentStyle & ~RenderingConstants.StylesToRemove);
+        Interop.User.SetWindowLongPtr(windowPointer, RenderingConstants.GWL_STYLE, newStyle);
+        Interop.User.SetWindowPos(windowPointer, nint.Zero, 0, 0, 0, 0, RenderingConstants.SWP_FRAMECHANGED | RenderingConstants.SWP_NOMOVE | RenderingConstants.SWP_NOSIZE | RenderingConstants.SWP_NOZORDER);
     }
 
     private static nint ApplyModernization(nint windowPointer)

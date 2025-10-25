@@ -18,4 +18,16 @@ public interface IApplicationRenderService
     /// <para>Intended to be called during the application render loop.</para>
     /// </summary>
     void PaintApplication();
+
+    /// <summary>
+    /// Gets the canvas width.
+    /// </summary>
+    /// <returns>The Stride application canvas width.</returns>
+    int GetCanvasWidth();
+
+    /// <summary>
+    /// Gets the canvas height.
+    /// </summary>
+    /// <returns>The Stride application canvas height.</returns>
+    int GetCanvasHeight();
 }

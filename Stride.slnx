@@ -1,10 +1,11 @@
 <Solution>
   <Folder Name="/examples/">
+    <Project Path="examples/DependencyInjectionStrideApp/DependencyInjectionStrideApp.csproj" Id="17c1aaec-eaf5-4aa0-a2c1-20072845179b" />
     <Project Path="examples/SimpleStrideApp/SimpleStrideApp.csproj" />
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/Stride.Abstractions/Stride.Abstractions.csproj" />
-    <Project Path="src/Stride.Renderer/Stride.Renderer.csproj" />
     <Project Path="src/Stride.Core/Stride.Core.csproj" />
+    <Project Path="src/Stride.Renderer/Stride.Renderer.csproj" />
   </Folder>
 </Solution>
