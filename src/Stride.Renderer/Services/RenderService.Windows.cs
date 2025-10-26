@@ -60,7 +60,7 @@ public partial class RenderService(IApplicationRenderService applicationRenderSe
         Console.WriteLine($"  Blur: {_hasBlur}\n");
 
         // create a window and get a handle to it, throw if no window could be created
-        var windowHandle = CreateWindow(application);
+        var windowHandle = CreateWindow();
         if (windowHandle == nint.Zero)
         {
             throw new ApplicationException("Window creation failed.");
@@ -83,7 +83,7 @@ public partial class RenderService(IApplicationRenderService applicationRenderSe
         RunMessageLoop();
     }
 
-    private nint CreateWindow(IApplication application)
+    private nint CreateWindow()
     {
         // create and populate a WindowMessenger
         _windowsMessageProcedure = WindowMessageProcedure;

@@ -13,7 +13,7 @@ internal static class Interop
     /// </summary>
     internal static class User
     {
-        [DllImport("user32.dll")]
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
         internal static extern nint DefWindowProc(nint hWnd, uint msg, nint wParam, nint lParam);
 
         [DllImport("user32.dll")]
@@ -25,7 +25,7 @@ internal static class Interop
         [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
         internal static extern nint CreateWindowEx(uint dwExStyle, string lpClassName, string lpWindowName, uint dwStyle, int x, int y, int nWidth, int nHeight, nint hWndParent = 0, nint hMenu = 0, nint hInstance = 0, nint lpParam = 0);
         
-        [DllImport("user32.dll")]
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
         internal static extern int GetMessage(out Message lpMsg, nint hWnd, uint wMsgFilterMin, uint wMsgFilterMax);
 
         /// <summary>
@@ -33,7 +33,7 @@ internal static class Interop
         /// </summary>
         /// <param name="lpMsg"></param>
         /// <returns></returns>
-        [DllImport("user32.dll")]
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
         internal static extern bool TranslateMessage(ref Message lpMsg);
 
         /// <summary>
@@ -41,7 +41,7 @@ internal static class Interop
         /// </summary>
         /// <param name="lpMsg"></param>
         /// <returns></returns>
-        [DllImport("user32.dll")]
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
         internal static extern nint DispatchMessage(ref Message lpMsg);
 
         /// <summary>
