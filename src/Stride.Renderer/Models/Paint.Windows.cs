@@ -2,6 +2,9 @@
 
 namespace Stride.Renderer.Models;
 
+/// <summary>
+/// Used to represent necessary information for a window paint message.
+/// </summary>
 [StructLayout(LayoutKind.Sequential)]
 public struct Paint
 {

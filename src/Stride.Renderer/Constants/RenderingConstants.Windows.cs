@@ -7,9 +7,15 @@ namespace Stride.Renderer.Constants;
 /// </summary>
 internal static class RenderingConstants
 {
-    // Used for SetWindowLongPtr
-    internal const int GWL_STYLE = -16;
-    internal const int GWL_EXSTYLE = -20;
+    /// <summary>
+    /// The default value to use when updating window style.
+    /// </summary>
+    internal const int UpdateWindowStyle = -16;
+
+    /// <summary>
+    /// The default value to use when updating an "Ex" or "long" window style.
+    /// </summary>
+    internal const int UpdateLongWindowStyle = -20;
 
     /// <summary>
     /// Signals an interactive dark mode.
@@ -24,12 +30,11 @@ internal static class RenderingConstants
     internal const int SystemBackdropType = 38;
 
     /// <summary>
-    /// Creates a window that has Minimize and Maximize buttons, a Title Bar, a System Menu,
-    /// and a Thick Frame (resizable borders).
+    /// A window style that has minimize & maximize buttons, a title bar, and resizable borders.
     /// </summary>
-    internal const uint BaseWindowStyle = (uint)(WindowStyle.Caption
+    internal const uint BaseWindowStyle = (uint)(WindowStyle.TitleBar
         | WindowStyle.SystemMenu
-        | WindowStyle.ThickFrame
+        | WindowStyle.Resizeable
         | WindowStyle.MinimizeBox
         | WindowStyle.MaximizeBox);
 
@@ -43,56 +48,92 @@ internal static class RenderingConstants
     /// When used for the position (x and y), it cascades the window position slightly
     /// if multiple default windows are opened.
     /// </summary>
-    internal const int UseDefaultWindowSize = unchecked((int)0x80000000);
-
-    internal const int DWMWA_MICA_EFFECT = 1029;
-
-    internal const int DWMSBT_TRANSIENTWINDOW = 3;
+    internal const int UseDefaultSize = unchecked((int)0x80000000);
 
     /// <summary>
-    /// Desktop Window Manager constant for enabling blur composition (often used in older DWM setups)
+    /// A flag that instructs the operating system to apply the "Mica" effect to a window's
+    /// non-client area.
+    /// <para>Windows 11 only.</para>
     /// </summary>
-    internal const int DWM_BLURBEHIND = 0x00000001;
-
-    internal const uint SWP_FRAMECHANGED = 0x0020;
-    internal const uint SWP_NOMOVE = 0x0002;
-    internal const uint SWP_NOSIZE = 0x0001;
-    internal const uint SWP_NOZORDER = 0x0004;
-
-    // Common Stock Object Constants
-    public const int WHITE_BRUSH = 0;
-    public const int LTGRAY_BRUSH = 1;
-    public const int GRAY_BRUSH = 2;
-    public const int DKGRAY_BRUSH = 3;
-    public const int BLACK_BRUSH = 4;
-    // Use this for a transparent background brush
-    public const int NULL_BRUSH = 5;
-    public const int HOLLOW_BRUSH = NULL_BRUSH;
-    public const int WHITE_PEN = 6;
-    public const int BLACK_PEN = 7;
-    public const int NULL_PEN = 8;
-
-    // DWM Blur Behind flags
-    internal const uint DWM_BB_ENABLE = 0x00000001;
-    internal const uint DWM_BB_BLURREGION = 0x00000002;
+    internal const int ApplyMicaToNonClientArea = 1029;
 
     /// <summary>
-    /// Mica effect for main windows.
+    /// Draw the backdrop material effect corresponding to a transient window behind the
+    /// entire window bounds.
+    /// <para>
+    /// For Windows 11, this corresponds to Desktop Acrylic, also known as Background Acrylic,
+    /// in its brightest variant.
+    /// </para>
+    /// </summary>
+    internal const int DrawBackdropAsTransientWindow = 3;
+
+    /// <summary>
+    /// Desktop Window Manager constant for enabling blur composition.
+    /// <para>Often used in older DWM setups.</para>
+    /// </summary>
+    internal const int EnableBlurComposition = 0x00000001;
+
+    /// <summary>
+    /// A flag to force a window to draw.
+    /// <para>Used in the <c>SetWindowPos()</c> method.</para>
+    /// </summary>
+    internal const uint ForceWindowFrameDraw = (uint)(WindowMessage.UpdateSize
+        | WindowMessage.KeepCurrentSize
+        | WindowMessage.KeepCurrentPosition
+        | WindowMessage.KeepCurrentLayer);
+
+    /// <summary>
+    /// A flag to enable blur behind a window.
+    /// </summary>
+    internal const uint EnableBlurBehind = 0x00000001;
+
+    /// <summary>
+    /// A flag to enable blurring the entire window.
+    /// </summary>
+    internal const uint BlurBehindEntireWindow = 0x00000002;
+
+    /// <summary>
+    /// A rendering flag to use when setting a window attribute that informs the window
+    /// to use "Mica" rendering.
+    /// <para>Windows 11 only.</para>
     /// </summary>
     internal const int MicaMainWindowEffect = 1;
 
+    /// <summary>
+    /// A rendering flag to use when setting a window attribute that informs the window
+    /// it will be rendered using a "non-client" policy.
+    /// </summary>
     internal const int NonClientRenderingPolicy = 2;
 
-    internal const int NonClientRenderingPolicyEnabled = 2;
-
+    /// <summary>
+    /// A rendering flag to use when setting a window attribute that informs the window
+    /// it will have it's corner preferences changed.
+    /// </summary>
     internal const int WindowCornerPreference = 33;
 
+    /// <summary>
+    /// A rendering flag to use when setting a window corner preference attribute when
+    /// rounded corners are desired.
+    /// </summary>
     internal const int WindowCornerPreferenceRound = 2;
 
-    // Flags: LWA_ALPHA (use bAlpha for transparency) or LWA_COLORKEY (use crKey for transparent color)
-    internal const uint LWA_ALPHA = 0x00000002;
+    /// <summary>
+    /// A flag to use when setting alpha values on a layered window attribute.
+    /// </summary>
+    internal const uint SetLayeredWindowAlpha = 0x00000002;
 
-    internal const uint DIB_RGB_COLORS = 0;
+    /// <summary>
+    /// A flag that signals to interpret colors of a device indepdent bitmap (DIB) as RGB.
+    /// </summary>
+    internal const uint InterpretColorsAsRGB = 0;
 
-    internal const uint SRCCOPY = 0x00CC0020;
+    /// <summary>
+    /// A raster operation code that instructs <c>BitBlt()</c> to copy the entire raster during blitting.
+    /// </summary>
+    internal const uint CopyEntireRaster = 0x00CC0020;
+
+    /// <summary>
+    /// Represents a "Class already exists" error when trying to register a window class.
+    /// </summary>
+    internal const int ClassAlreadyExistsError = 1410;
 }

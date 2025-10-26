@@ -2,10 +2,19 @@
 
 namespace Stride.Renderer.Models;
 
+/// <summary>
+/// Represents an (x, y) coordinate.
+/// </summary>
 [StructLayout(LayoutKind.Sequential)]
 public struct Point
 {
-    public int x;
+    /// <summary>
+    /// The X coordinate of a point on the screen.
+    /// </summary>
+    public int X;
 
-    public int y;
+    /// <summary>
+    /// The Y coordinate of a point on the screen.
+    /// </summary>
+    public int Y;
 }

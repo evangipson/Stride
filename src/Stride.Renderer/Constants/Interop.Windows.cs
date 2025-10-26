@@ -65,6 +65,9 @@ internal static class Interop
 
         [DllImport("user32.dll")]
         internal static extern bool SetLayeredWindowAttributes(nint hwnd, uint crKey, byte bAlpha, uint dwFlags);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern int SetWindowCompositionAttribute(nint hWnd, ref WindowCompositionAttributeData data);
     }
 
     /// <summary>
@@ -75,7 +78,7 @@ internal static class Interop
         [DllImport("dwmapi.dll")]
         internal static extern int DwmSetWindowAttribute(nint hwnd, int dwAttribute, ref int pvAttribute, int cbAttribute);
 
-        [DllImport("dwmapi.dll")]
+        [DllImport("dwmapi.dll", SetLastError = true)]
         internal static extern int DwmEnableBlurBehindWindow(nint hWnd, ref BlurBehind pBlurBehind);
     }
 

@@ -22,7 +22,7 @@ public partial class RenderService(IApplicationRenderService applicationRenderSe
     /// <summary>
     /// A handle to store the windows message procedure.
     /// </summary>
-    private MessageLoop.WndProc? _windowsMessageProcedure;
+    private MessageLoop.WindowProcedure? _windowsMessageProcedure;
 
     /// <inheritdoc/>
     public void Render(IApplication application)
@@ -63,15 +63,14 @@ public partial class RenderService(IApplicationRenderService applicationRenderSe
         nint windowsMessageProcedurePointer = Marshal.GetFunctionPointerForDelegate(_windowsMessageProcedure);
 
         // create and populate a WindowMessenger
-        // bgbrush can be something like GetStockObject(BLACK_BRUSH), but for now is nint.Zero
+        // bgbrush can be something like GetStockObject(WindowBrush.Black), but for now is nint.Zero
         WindowMessenger windowMessenger = new(windowsMessageProcedurePointer, Interop.Kernel.GetModuleHandle(null), nint.Zero, className);
 
         // call the registration function
-        uint registrationErrorCode = uint.MinValue;
         ushort registered = Interop.User.RegisterClassEx(ref windowMessenger);
-        if (registered == 0 && Interop.Kernel.GetLastError() != 1410)
+        uint registrationErrorCode = Interop.Kernel.GetLastError();
+        if (registered == 0 && registrationErrorCode != RenderingConstants.ClassAlreadyExistsError)
         {
-            // 1410 (0x576) is "Class already exists," which is fine, but any other error means a problem.
             throw new ApplicationException($"Window Class registration failed! Win32 Error Code: {registrationErrorCode}");
         }
 
@@ -84,12 +83,11 @@ public partial class RenderService(IApplicationRenderService applicationRenderSe
 
         // setup bitmap info for GDI
         BitmapInfo bitmapInfo = new(width, height, planes: 1, bitCount: 32);
-        _gdiBitmap = Interop.Gdi.CreateDIBSection(nint.Zero, ref bitmapInfo, RenderingConstants.DIB_RGB_COLORS, out nint bitsPointer, nint.Zero, 0);
+        _gdiBitmap = Interop.Gdi.CreateDIBSection(nint.Zero, ref bitmapInfo, RenderingConstants.InterpretColorsAsRGB, out nint bitsPointer, nint.Zero, 0);
 
         // create the window and return a handle to it
-        return Interop.User.CreateWindowEx((uint)WindowStyle.SystemMenu, className, application.Name ?? "Stride Application", RenderingConstants.BaseWindowStyle,
-            RenderingConstants.UseDefaultWindowSize, RenderingConstants.UseDefaultWindowSize, width, height,
-            nint.Zero, nint.Zero, nint.Zero, nint.Zero);
+        return Interop.User.CreateWindowEx(0x0, className, application.Name ?? "Stride Application", RenderingConstants.BaseWindowStyle,
+            RenderingConstants.UseDefaultSize, RenderingConstants.UseDefaultSize, width, height, nint.Zero, nint.Zero, nint.Zero, nint.Zero);
     }
 
     private nint WindowMessageProcedure(nint hWnd, uint msg, nint wParam, nint lParam)
@@ -144,7 +142,7 @@ public partial class RenderService(IApplicationRenderService applicationRenderSe
         // copy pixels from the memory device context to the window device context
         var canvasWidth = _applicationRenderService.GetCanvasWidth();
         var canvasHeight = _applicationRenderService.GetCanvasHeight();
-        Interop.Gdi.BitBlt(windowDeviceContext, 0, 0, canvasWidth, canvasHeight, memoryDeviceContext, 0, 0, RenderingConstants.SRCCOPY);
+        Interop.Gdi.BitBlt(windowDeviceContext, 0, 0, canvasWidth, canvasHeight, memoryDeviceContext, 0, 0, RenderingConstants.CopyEntireRaster);
 
         // clean up the GDI resources (prevent memory leaks)
         Interop.Gdi.SelectObject(memoryDeviceContext, oldBitmap);
@@ -164,40 +162,91 @@ public partial class RenderService(IApplicationRenderService applicationRenderSe
     private static void ApplyCustomization(nint windowPointer)
     {
         // set global alpha to allow some background to show through initially
-        Interop.User.SetLayeredWindowAttributes(windowPointer, 0, 230, RenderingConstants.LWA_ALPHA);
+        Interop.User.SetLayeredWindowAttributes(windowPointer, 0, 230, RenderingConstants.SetLayeredWindowAlpha);
 
         // remove the components that define the old title bar, and repaint (to get a mica look)
-        nint currentStyle = Interop.User.SetWindowLongPtr(windowPointer, RenderingConstants.GWL_STYLE, nint.Zero);
+        nint currentStyle = Interop.User.SetWindowLongPtr(windowPointer, RenderingConstants.UpdateWindowStyle, nint.Zero);
         nint newStyle = (nint)((uint)currentStyle & ~RenderingConstants.StylesToRemove);
-        Interop.User.SetWindowLongPtr(windowPointer, RenderingConstants.GWL_STYLE, newStyle);
-        Interop.User.SetWindowPos(windowPointer, nint.Zero, 0, 0, 0, 0, RenderingConstants.SWP_FRAMECHANGED | RenderingConstants.SWP_NOMOVE | RenderingConstants.SWP_NOSIZE | RenderingConstants.SWP_NOZORDER);
+        Interop.User.SetWindowLongPtr(windowPointer, RenderingConstants.UpdateWindowStyle, newStyle);
+        Interop.User.SetWindowPos(windowPointer, nint.Zero, 0, 0, 0, 0, RenderingConstants.ForceWindowFrameDraw);
     }
 
     private static nint ApplyModernization(nint windowPointer)
     {
         // enable non-client rendering
-        var ncRenderingEnabled = RenderingConstants.NonClientRenderingPolicyEnabled;
-        Interop.Dwm.DwmSetWindowAttribute(windowPointer, RenderingConstants.NonClientRenderingPolicy, ref ncRenderingEnabled, sizeof(int));
+        var ncRenderingEnabled = RenderingConstants.NonClientRenderingPolicy;
+        Interop.Dwm.DwmSetWindowAttribute(windowPointer, (int)WindowAttribute.NonClientRenderingPolicy, ref ncRenderingEnabled, sizeof(int));
 
         // set immersive dark mode
         var immersiveDarkMode = 1;
-        Interop.Dwm.DwmSetWindowAttribute(windowPointer, RenderingConstants.ImmersiveDarkMode, ref immersiveDarkMode, sizeof(int));
+        Interop.Dwm.DwmSetWindowAttribute(windowPointer, (int)WindowAttribute.UseDarkMode, ref immersiveDarkMode, sizeof(int));
 
-        //var acrylicValue = DWMSBT_TRANSIENTWINDOW;
-        //Interop.Dwm.DwmSetWindowAttribute(windowPointer, RenderingConstants.SystemBackdropType, ref acrylicValue, sizeof(int));
+        // transient window backdrop
+        var acrylicValue = RenderingConstants.DrawBackdropAsTransientWindow;
+        Interop.Dwm.DwmSetWindowAttribute(windowPointer, (int)WindowAttribute.WindowBackdropMaterial, ref acrylicValue, sizeof(int));
 
-        // explicitly enable the blur effect
-        BlurBehind blurBehind = new(RenderingConstants.DWM_BB_ENABLE | RenderingConstants.DWM_BB_BLURREGION);
-        int result = Interop.Dwm.DwmEnableBlurBehindWindow(windowPointer, ref blurBehind);
-        if (result != 0)
-        {
-            // if this fails, it often means the OS doesn't support the blur, or the window needs additional styling for it to apply.
-            Console.WriteLine($"{nameof(Interop.Dwm.DwmEnableBlurBehindWindow)} failed with error code: {result}");
-        }
+        // enable window blur behind
+        ApplyWindowBlur(windowPointer, WindowAccent.AcrylicBlurBehind);
 
         // set corner preference on the window
-        var cornerPreference = RenderingConstants.WindowCornerPreferenceRound;
-        Interop.Dwm.DwmSetWindowAttribute(windowPointer, RenderingConstants.WindowCornerPreference, ref cornerPreference, sizeof(int));
+        var cornerPreference = (int)WindowAttribute.UseRoundedCorners;
+        Interop.Dwm.DwmSetWindowAttribute(windowPointer, (int)WindowAttribute.UseRoundedCorners, ref cornerPreference, sizeof(int));
+
+        return nint.Zero;
+    }
+
+    private static nint ApplyWindowBlur(nint windowPointer, WindowAccent windowAccent)
+    {
+        // try and enable blur using the "new" Mica/Acrylic approach for newer Windows (8 and higher) versions
+        AccentPolicy policy = new()
+        {
+            WindowAccent = windowAccent,
+            // Often set to 2 to draw the blur borderless
+            AccentFlags = 0,
+            GradientColor = 0x70000000,
+            AnimationId = 0
+        };
+
+        // pin the policy structure in memory to get a stable pointer
+        var policyHandle = GCHandle.Alloc(policy, GCHandleType.Pinned);
+
+        // create the data structure for the P/Invoke call
+        WindowCompositionAttributeData data = new()
+        {
+            Attribute = WindowCompositionAttribute.WCA_ACCENT_POLICY,
+            Data = policyHandle.AddrOfPinnedObject(),
+            SizeOfData = Marshal.SizeOf<AccentPolicy>()
+        };
+
+        // try to apply the new acrylic/mica blur, fallback to the classic DWM blur behind on older Windows versions
+        try
+        {
+            int compositionResult = Interop.User.SetWindowCompositionAttribute(windowPointer, ref data);
+            uint windowCompositionErrorCode = Interop.Kernel.GetLastError();
+            if (compositionResult == 0 && windowCompositionErrorCode != 0)
+            {
+                Console.WriteLine($"Acrylic/Mica blur failed with error code: {windowCompositionErrorCode}.");
+                throw new ApplicationException();
+            }
+        }
+        catch(ApplicationException)
+        {
+            BlurBehind blurBehind = new(RenderingConstants.EnableBlurBehind | RenderingConstants.BlurBehindEntireWindow);
+            int result = Interop.Dwm.DwmEnableBlurBehindWindow(windowPointer, ref blurBehind);
+            uint enableBlurBehindErrorCode = Interop.Kernel.GetLastError();
+            if (result == 0 && enableBlurBehindErrorCode != 0)
+            {
+                Console.WriteLine($"{nameof(Interop.Dwm.DwmEnableBlurBehindWindow)} failed with error code: {enableBlurBehindErrorCode}.");
+            }
+        }
+        finally
+        {
+            // always clean up the pinned memory
+            if (policyHandle.IsAllocated)
+            {
+                policyHandle.Free();
+            }
+        }
 
         return nint.Zero;
     }

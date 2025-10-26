@@ -29,4 +29,25 @@ internal enum WindowMessage : uint
     /// Windows operating system message to signal that window composition has changed.
     /// </summary>
     CompositionChanged = 0x031E,
+
+    /// <summary>
+    /// Windows operating system message to signal a size calculation message to a window,
+    /// even when a window's size is not being changed.
+    /// </summary>
+    UpdateSize = 0x0020,
+
+    /// <summary>
+    /// Windows operating system message to signal retaining a window's current position.
+    /// </summary>
+    KeepCurrentPosition = 0x0002,
+
+    /// <summary>
+    /// Windows operating system message to signal retaining a window's current size.
+    /// </summary>
+    KeepCurrentSize = 0x0001,
+
+    /// <summary>
+    /// Windows operating system message to signal retaining a window's current layer.
+    /// </summary>
+    KeepCurrentLayer = 0x0004,
 }

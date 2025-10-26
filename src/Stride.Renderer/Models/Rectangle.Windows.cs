@@ -2,14 +2,29 @@
 
 namespace Stride.Renderer.Models;
 
+/// <summary>
+/// Represents an area on the screen.
+/// </summary>
 [StructLayout(LayoutKind.Sequential)]
 public struct Rectangle
 {
-    public int left;
+    /// <summary>
+    /// The left point of the rectangle.
+    /// </summary>
+    public int Left;
     
-    public int top;
+    /// <summary>
+    /// The top point of the rectangle.
+    /// </summary>
+    public int Top;
     
-    public int right;
+    /// <summary>
+    /// The right point of the rectangle.
+    /// </summary>
+    public int Right;
     
-    public int bottom;
+    /// <summary>
+    /// The bottom point of the rectangle.
+    /// </summary>
+    public int Bottom;
 }

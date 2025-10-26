@@ -18,7 +18,12 @@
   <ItemGroup Condition="'$(TargetPlatformIdentifier)' == 'windows'">
     <Compile Include="Constants\Interop.Windows.cs" />
     <Compile Include="Constants\RenderingConstants.Windows.cs" />
+    <Compile Include="Enums\WindowAccent.Windows.cs" />
+    <Compile Include="Enums\WindowAttribute.Windows.cs" />
+    <Compile Include="Enums\WindowBrush.Windows.cs" />
+    <Compile Include="Enums\WindowCompositionAttribute.Windows.cs" />
     <Compile Include="Enums\WindowMessage.Windows.cs" />
+    <Compile Include="Enums\WindowPen.Windows.cs" />
     <Compile Include="Enums\WindowStyle.Windows.cs" />
     <Compile Include="Models\BitmapInfo.Windows.cs" />
     <Compile Include="Models\BitmapInfoHeader.Windows.cs" />
@@ -28,6 +33,8 @@
     <Compile Include="Models\Paint.Windows.cs" />
     <Compile Include="Models\Point.Windows.cs" />
     <Compile Include="Models\Rectangle.Windows.cs" />
+    <Compile Include="Models\WindowAccentPolicy.Windows.cs" />
+    <Compile Include="Models\WindowCompositionAttributeData.Windows.cs" />
     <Compile Include="Models\WindowMessenger.Windows.cs" />
     <Compile Include="Services\RenderService.Windows.cs" />
   </ItemGroup>
