@@ -26,6 +26,10 @@ var renderer = new RenderService(appRenderer);
 renderer.Render(app);
 ```
 
+This creates an application that looks like this:
+
+![](assets/simple-stride-app.png)
+
 You can also use Stride in a dependency injection application:
 
 ```csharp
