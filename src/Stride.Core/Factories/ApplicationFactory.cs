@@ -6,10 +6,11 @@ namespace Stride.Core.Factories;
 
 public class ApplicationFactory : IApplicationFactory
 {
-    public IApplication CreateApplication(string name, IWindow window)
+    public IApplication CreateApplication(string name, IWindow window, bool? darkMode = false)
         => new Application()
         {
             Name = name,
-            Window = window
+            Window = window,
+            DarkMode = darkMode
         };
 }

@@ -38,7 +38,7 @@ public partial class RenderService(IApplicationRenderService applicationRenderSe
         //ApplyCustomization(windowHandle);
 
         // apply modernization
-        ApplyModernization(windowHandle);
+        ApplyModernization(windowHandle, application);
 
         // display the window
         Interop.User.ShowWindow(windowHandle, (int)WindowMessage.Show);
@@ -63,8 +63,8 @@ public partial class RenderService(IApplicationRenderService applicationRenderSe
         nint windowsMessageProcedurePointer = Marshal.GetFunctionPointerForDelegate(_windowsMessageProcedure);
 
         // create and populate a WindowMessenger
-        // bgbrush can be something like GetStockObject(WindowBrush.Black), but for now is nint.Zero
-        WindowMessenger windowMessenger = new(windowsMessageProcedurePointer, Interop.Kernel.GetModuleHandle(null), nint.Zero, className);
+        var background = application.DarkMode == true ? nint.Zero : Interop.Gdi.GetStockObject((int)WindowBrush.White);
+        WindowMessenger windowMessenger = new(windowsMessageProcedurePointer, Interop.Kernel.GetModuleHandle(null), background, className);
 
         // call the registration function
         ushort registered = Interop.User.RegisterClassEx(ref windowMessenger);
@@ -85,8 +85,17 @@ public partial class RenderService(IApplicationRenderService applicationRenderSe
         BitmapInfo bitmapInfo = new(width, height, planes: 1, bitCount: 32);
         _gdiBitmap = Interop.Gdi.CreateDIBSection(nint.Zero, ref bitmapInfo, RenderingConstants.InterpretColorsAsRGB, out nint bitsPointer, nint.Zero, 0);
 
+        // build the window style based on Stride application and window options
+        var baseWindowStyle = (uint)WindowStyle.Default;
+        var windowStyle = RenderingConstants.BaseWindowStyle;
+        if (application.Window.TitleBar != true)
+        {
+            baseWindowStyle = (uint)WindowStyle.Layered;
+            windowStyle = (uint)WindowStyle.Resizeable;
+        }
+
         // create the window and return a handle to it
-        return Interop.User.CreateWindowEx(0x0, className, application.Name ?? "Stride Application", RenderingConstants.BaseWindowStyle,
+        return Interop.User.CreateWindowEx(baseWindowStyle, className, application.Name ?? "Stride Application", windowStyle,
             RenderingConstants.UseDefaultSize, RenderingConstants.UseDefaultSize, width, height, nint.Zero, nint.Zero, nint.Zero, nint.Zero);
     }
 
@@ -95,7 +104,7 @@ public partial class RenderService(IApplicationRenderService applicationRenderSe
         {
             //WindowMessage.EraseBackground => 1,
             WindowMessage.Paint => HandlePaint(hWnd),
-            WindowMessage.CompositionChanged => ApplyModernization(hWnd),
+            //WindowMessage.CompositionChanged => ApplyModernization(hWnd),
             WindowMessage.Close => CloseWindow(),
             _ => Interop.User.DefWindowProc(hWnd, msg, wParam, lParam) // always call the default handler for unhandled messages!
         };
@@ -171,22 +180,28 @@ public partial class RenderService(IApplicationRenderService applicationRenderSe
         Interop.User.SetWindowPos(windowPointer, nint.Zero, 0, 0, 0, 0, RenderingConstants.ForceWindowFrameDraw);
     }
 
-    private static nint ApplyModernization(nint windowPointer)
+    private static nint ApplyModernization(nint windowPointer, IApplication application)
     {
         // enable non-client rendering
         var ncRenderingEnabled = RenderingConstants.NonClientRenderingPolicy;
         Interop.Dwm.DwmSetWindowAttribute(windowPointer, (int)WindowAttribute.NonClientRenderingPolicy, ref ncRenderingEnabled, sizeof(int));
 
-        // set immersive dark mode
-        var immersiveDarkMode = 1;
-        Interop.Dwm.DwmSetWindowAttribute(windowPointer, (int)WindowAttribute.UseDarkMode, ref immersiveDarkMode, sizeof(int));
+        // set dark mode
+        if (application.DarkMode == true)
+        {
+            var immersiveDarkMode = 1;
+            Interop.Dwm.DwmSetWindowAttribute(windowPointer, (int)WindowAttribute.UseDarkMode, ref immersiveDarkMode, sizeof(int));
+        }
 
         // transient window backdrop
         var acrylicValue = RenderingConstants.DrawBackdropAsTransientWindow;
         Interop.Dwm.DwmSetWindowAttribute(windowPointer, (int)WindowAttribute.WindowBackdropMaterial, ref acrylicValue, sizeof(int));
 
         // enable window blur behind
-        ApplyWindowBlur(windowPointer, WindowAccent.AcrylicBlurBehind);
+        if (application.Window?.Blur == true)
+        {
+            ApplyWindowBlur(windowPointer, WindowAccent.AcrylicBlurBehind);
+        }
 
         // set corner preference on the window
         var cornerPreference = (int)WindowAttribute.UseRoundedCorners;
@@ -201,9 +216,8 @@ public partial class RenderService(IApplicationRenderService applicationRenderSe
         AccentPolicy policy = new()
         {
             WindowAccent = windowAccent,
-            // Often set to 2 to draw the blur borderless
             AccentFlags = 0,
-            GradientColor = 0x70000000,
+            GradientColor = 0x00000000,
             AnimationId = 0
         };
 

@@ -8,5 +8,9 @@ public interface IWindow
 
     int? Height { get; set; }
 
+    bool? Blur { get; set; }
+
+    bool? TitleBar { get; set; }
+
     IList<IComponent> Components { get; set; }
 }

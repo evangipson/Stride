@@ -8,11 +8,13 @@ public class WindowBuilder : IWindowBuilder
 {
     private readonly Window _window = new();
 
-    public IWindowBuilder Create(string? title, int? width, int? height)
+    public IWindowBuilder Create(string? title, int? width, int? height, bool? blur = false, bool? titleBar = false)
     {
         _window.Title = title;
         _window.Width = width;
         _window.Height = height;
+        _window.Blur = blur;
+        _window.TitleBar = titleBar;
 
         return this;
     }

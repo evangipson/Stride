@@ -4,5 +4,11 @@ public interface IStrideService
 {
     IStrideService CreateApp(string appName, int width, int height);
 
+    IStrideService WithDarkMode();
+
+    IStrideService WithBlur();
+
+    IStrideService WithTitleBar();
+
     IStrideService Run();
 }

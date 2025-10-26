@@ -12,6 +12,10 @@ public class Window : IWindow
 
     public int? Height { get; set; }
 
+    public bool? Blur { get; set; }
+
+    public bool? TitleBar { get; set; }
+
     public IList<IComponent> Components
     {
         get => _components ??= [];

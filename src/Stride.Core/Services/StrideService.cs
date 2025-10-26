@@ -25,9 +25,42 @@ public class StrideService(IApplicationFactory applicationFactory,
         return this;
     }
 
+    public IStrideService WithDarkMode()
+    {
+        if (_application?.Window == null)
+        {
+            throw new ApplicationException("You must call CreateApp() before attempting to set Stride application options.");
+        }
+
+        _application.DarkMode = true;
+        return this;
+    }
+
+    public IStrideService WithBlur()
+    {
+        if (_application?.Window == null)
+        {
+            throw new ApplicationException("You must call CreateApp() before attempting to set Stride application options.");
+        }
+
+        _application.Window.Blur = true;
+        return this;
+    }
+
+    public IStrideService WithTitleBar()
+    {
+        if (_application?.Window == null)
+        {
+            throw new ApplicationException("You must call CreateApp() before attempting to set Stride application options.");
+        }
+
+        _application.Window.TitleBar = true;
+        return this;
+    }
+
     public IStrideService Run()
     {
-        if (_application == null)
+        if (_application?.Window == null)
         {
             throw new ApplicationException("You must call CreateApp() before attempting to run the Stride application.");
         }

@@ -6,6 +6,16 @@
 internal enum WindowStyle : uint
 {
     /// <summary>
+    /// The window has generic left-aligned properties.
+    /// </summary>
+    Default = 0x00000000,
+
+    /// <summary>
+    /// The window is a layered window.
+    /// </summary>
+    Layered = 0x00080000,
+
+    /// <summary>
     /// The window has a thin-line border.
     /// </summary>
     ThinBorder = 0x00800000,
