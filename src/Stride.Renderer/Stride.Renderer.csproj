@@ -28,6 +28,7 @@
     <Compile Include="Models\BitmapInfo.Windows.cs" />
     <Compile Include="Models\BitmapInfoHeader.Windows.cs" />
     <Compile Include="Models\BlurBehind.Windows.cs" />
+    <Compile Include="Models\Margins.Windows.cs" />
     <Compile Include="Models\Message.Windows.cs" />
     <Compile Include="Models\MessageLoop.Windows.cs" />
     <Compile Include="Models\Paint.Windows.cs" />

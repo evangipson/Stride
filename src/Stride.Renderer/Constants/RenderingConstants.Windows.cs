@@ -13,9 +13,13 @@ internal static class RenderingConstants
     internal const int UpdateWindowStyle = -16;
 
     /// <summary>
-    /// The default value to use when updating an "Ex" or "long" window style.
+    /// Index used with SetWindowLongPtr or GetWindowLongPtr to access the extra 32/64-bit user data
+    /// associated with the window.
+    /// <para>
+    /// Used to store the GCHandle pointer for the managed C# object instance.
+    /// </para>
     /// </summary>
-    internal const int UpdateLongWindowStyle = -20;
+    internal const int UserData = -21;
 
     /// <summary>
     /// Signals an interactive dark mode.
@@ -37,6 +41,11 @@ internal static class RenderingConstants
         | WindowStyle.Resizeable
         | WindowStyle.MinimizeBox
         | WindowStyle.MaximizeBox);
+
+    /// <summary>
+    /// A flag that instructs the operating system to use rounded corners for a window.
+    /// </summary>
+    internal const int UseRoundedCorners = 2;
 
     /// <summary>
     /// Styles to remove from the base window before rendering.

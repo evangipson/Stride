@@ -141,7 +141,7 @@ internal enum WindowAttribute
     /// Specifies the rounded corner preference for a window.
     /// <para>Only supported on Windows 11.</para>
     /// </summary>
-    UseRoundedCorners = 33,
+    RoundedCorners = 33,
 
     /// <summary>
     /// Specifies the color of the window border.

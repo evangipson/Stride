@@ -58,6 +58,17 @@ public class StrideService(IApplicationFactory applicationFactory,
         return this;
     }
 
+    public IStrideService WithTransparency()
+    {
+        if (_application?.Window == null)
+        {
+            throw new ApplicationException("You must call CreateApp() before attempting to set Stride application options.");
+        }
+
+        _application.Window.Transparent = true;
+        return this;
+    }
+
     public IStrideService Run()
     {
         if (_application?.Window == null)

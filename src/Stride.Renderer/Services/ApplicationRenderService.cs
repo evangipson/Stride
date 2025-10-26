@@ -38,12 +38,14 @@ public class ApplicationRenderService : IApplicationRenderService, IDisposable
 
     public void PaintApplication()
     {
-        Surface?.Canvas.Clear(new SKColor(0x00, 0x00, 0x00, 0x20));
+        Console.WriteLine($"{nameof(PaintApplication)} starting.");
+        Surface?.Canvas.Clear(new SKColor(230, 230, 230, 255));
 
         // drawing code here
         Surface?.Canvas.DrawCircle(100, 100, 50, new SKPaint { Color = SKColors.Blue });
 
         Surface?.Canvas.Flush();
+        Console.WriteLine($"{nameof(PaintApplication)} ending.");
     }
 
     public int GetCanvasWidth() => Bitmap?.Width ?? 0;
@@ -56,7 +58,7 @@ public class ApplicationRenderService : IApplicationRenderService, IDisposable
         {
             if (disposing)
             {
-                // TODO: dispose managed state (managed objects)
+                // dispose managed state (managed objects)
             }
 
             // free unmanaged resources (unmanaged objects) and override finalizer
@@ -65,6 +67,8 @@ public class ApplicationRenderService : IApplicationRenderService, IDisposable
             Bitmap?.Dispose();
 
             // set large fields to null
+            Bitmap = null;
+            Surface = null;
             _disposedValue = true;
         }
     }

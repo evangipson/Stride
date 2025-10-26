@@ -8,16 +8,16 @@ namespace Stride.Renderer.Models;
 [StructLayout(LayoutKind.Sequential)]
 public struct Paint
 {
-    public nint hdc;
+    public nint HardwareDeviceContext;
     
-    public bool fErase;
+    public bool Erase;
     
-    public Rectangle rcPaint;
+    public Rectangle Rectangle;
     
-    public bool fRestore;
+    public bool Restore;
     
-    public bool fIncUpdate;
+    public bool Update;
 
     [MarshalAs(UnmanagedType.ByValArray, SizeConst = 32)]
-    public byte[] rgbReserved;
+    public byte[] Reserved;
 }

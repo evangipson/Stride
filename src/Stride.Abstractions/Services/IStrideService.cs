@@ -10,5 +10,7 @@ public interface IStrideService
 
     IStrideService WithTitleBar();
 
+    IStrideService WithTransparency();
+
     IStrideService Run();
 }

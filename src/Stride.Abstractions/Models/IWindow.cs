@@ -12,5 +12,7 @@ public interface IWindow
 
     bool? TitleBar { get; set; }
 
+    bool? Transparent { get; set; }
+
     IList<IComponent> Components { get; set; }
 }

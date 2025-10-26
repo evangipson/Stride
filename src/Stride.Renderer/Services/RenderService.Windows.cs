@@ -3,6 +3,7 @@ using Stride.Abstractions.Models;
 using Stride.Abstractions.Services;
 using Stride.Renderer.Constants;
 using Stride.Renderer.Enums;
+using Stride.Renderer.Extensions;
 using Stride.Renderer.Models;
 
 namespace Stride.Renderer.Services;
@@ -14,19 +15,50 @@ public partial class RenderService(IApplicationRenderService applicationRenderSe
 {
     private readonly IApplicationRenderService _applicationRenderService = applicationRenderService ?? throw new ArgumentNullException(nameof(applicationRenderService));
 
-    /// <summary>
-    /// Handle to a GDI bitmap object.
-    /// </summary>
-    private nint _gdiBitmap;
+    private const string _defaultWindowClassName = "StrideWindowClassName";
+    private const string _defaultApplicationName = "Stride Application";
+    private const int _defaultWindowWidth = 800;
+    private const int _defaultWindowHeight = 600;
 
-    /// <summary>
-    /// A handle to store the windows message procedure.
-    /// </summary>
-    private MessageLoop.WindowProcedure? _windowsMessageProcedure;
+    // static field required for lifetime management
+    private static MessageLoop.WindowProcedure? _windowsMessageProcedure;
+
+    private string _appName = _defaultApplicationName;
+    private int _windowWidth;
+    private int _windowHeight;
+    private bool _isTransparent;
+    private bool _isDarkMode;
+    private bool _hasTitleBar;
+    private bool _hasBlur;
+    private nint _gdiBitmap;
 
     /// <inheritdoc/>
     public void Render(IApplication application)
     {
+        // throw if there is no window on the application
+        if (application?.Window == null)
+        {
+            throw new ApplicationException("Stride must have a window to render.");
+        }
+
+        // populate Stride application fields
+        _appName = application.Name ?? _defaultApplicationName;
+        _windowWidth = application.Window.Width ?? _defaultWindowWidth;
+        _windowHeight = application.Window.Height ?? _defaultWindowHeight;
+        _isTransparent = application.Window.Transparent ?? false;
+        _isDarkMode = application.DarkMode ?? false;
+        _hasTitleBar = application.Window.TitleBar ?? false;
+        _hasBlur = application.Window.Blur ?? false;
+
+        Console.WriteLine("\nRendering Stride application with the following config:");
+        Console.WriteLine($"  Application Name: {_appName}");
+        Console.WriteLine($"  Window Width: {_windowWidth}");
+        Console.WriteLine($"  Window Height: {_windowHeight}");
+        Console.WriteLine($"  Transparency: {_isTransparent}");
+        Console.WriteLine($"  Dark Mode: {_isDarkMode}");
+        Console.WriteLine($"  Title Bar: {_hasTitleBar}");
+        Console.WriteLine($"  Blur: {_hasBlur}\n");
+
         // create a window and get a handle to it, throw if no window could be created
         var windowHandle = CreateWindow(application);
         if (windowHandle == nint.Zero)
@@ -34,14 +66,18 @@ public partial class RenderService(IApplicationRenderService applicationRenderSe
             throw new ApplicationException("Window creation failed.");
         }
 
-        // apply any customization
-        //ApplyCustomization(windowHandle);
+        // keep a reference to all the user data for this rendering service instance
+        GCHandle gch = GCHandle.Alloc(this);
+        Interop.User.SetWindowLongPtr(windowHandle, RenderingConstants.UserData, GCHandle.ToIntPtr(gch));
 
-        // apply modernization
-        ApplyModernization(windowHandle, application);
+        // apply Stride customizations
+        ApplyStrideCustomizations(windowHandle);
 
         // display the window
         Interop.User.ShowWindow(windowHandle, (int)WindowMessage.Show);
+
+        // run an initial paint of the application
+        _applicationRenderService.PaintApplication();
 
         // start the message loop
         RunMessageLoop();
@@ -49,64 +85,45 @@ public partial class RenderService(IApplicationRenderService applicationRenderSe
 
     private nint CreateWindow(IApplication application)
     {
-        // throw if there is no window on the application
-        if (application.Window == null)
-        {
-            throw new ApplicationException("Stride must have a window to render.");
-        }
-
-        // define and Register the window class
-        string className = "StrideWindowClass";
-
-        // capture the WindowMessageProcedure delegate
-        _windowsMessageProcedure = WindowMessageProcedure;
-        nint windowsMessageProcedurePointer = Marshal.GetFunctionPointerForDelegate(_windowsMessageProcedure);
-
         // create and populate a WindowMessenger
-        var background = application.DarkMode == true ? nint.Zero : Interop.Gdi.GetStockObject((int)WindowBrush.White);
-        WindowMessenger windowMessenger = new(windowsMessageProcedurePointer, Interop.Kernel.GetModuleHandle(null), background, className);
+        _windowsMessageProcedure = WindowMessageProcedure;
+        var windowsProcedurePointer = Marshal.GetFunctionPointerForDelegate(_windowsMessageProcedure);
+        var instance = Interop.Kernel.GetModuleHandle(null);
+        var backgroundColor = GetBackgroundColor();
+        var backgroundHandle = Interop.Gdi.GetStockObject(backgroundColor);
+        WindowMessenger messenger = new(windowsProcedurePointer, instance, backgroundHandle, _defaultWindowClassName);
 
         // call the registration function
-        ushort registered = Interop.User.RegisterClassEx(ref windowMessenger);
-        uint registrationErrorCode = Interop.Kernel.GetLastError();
-        if (registered == 0 && registrationErrorCode != RenderingConstants.ClassAlreadyExistsError)
-        {
-            throw new ApplicationException($"Window Class registration failed! Win32 Error Code: {registrationErrorCode}");
-        }
+        Interop.User.RegisterClassEx(ref messenger)
+            .ThrowOnError(nameof(Interop.User.RegisterClassEx));
 
-        // get width & height from stride application
-        var width = application.Window.Width.GetValueOrDefault(800);
-        var height = application.Window.Height.GetValueOrDefault(600);
+        // populate the GDI bitmap
+        BitmapInfo bitmapInfo = new(_windowWidth, _windowHeight, planes: 1, bitCount: 32);
+        _gdiBitmap = Interop.Gdi.CreateDIBSection(nint.Zero, ref bitmapInfo, RenderingConstants.InterpretColorsAsRGB, out _, nint.Zero, 0);
 
         // populate the inner canvas of the application for painting it later
-        _applicationRenderService.SetApplicationCanvas(width, height);
-
-        // setup bitmap info for GDI
-        BitmapInfo bitmapInfo = new(width, height, planes: 1, bitCount: 32);
-        _gdiBitmap = Interop.Gdi.CreateDIBSection(nint.Zero, ref bitmapInfo, RenderingConstants.InterpretColorsAsRGB, out nint bitsPointer, nint.Zero, 0);
+        _applicationRenderService.SetApplicationCanvas(_windowWidth, _windowHeight);
 
         // build the window style based on Stride application and window options
-        var baseWindowStyle = (uint)WindowStyle.Default;
-        var windowStyle = RenderingConstants.BaseWindowStyle;
-        if (application.Window.TitleBar != true)
-        {
-            baseWindowStyle = (uint)WindowStyle.Layered;
-            windowStyle = (uint)WindowStyle.Resizeable;
-        }
+        var baseWindowStyle = _hasTitleBar
+            ? (uint)WindowStyle.Default
+            : (uint)WindowStyle.Layered;
+        var windowStyle = _hasTitleBar
+            ? RenderingConstants.BaseWindowStyle
+            : (uint)WindowStyle.Resizeable;
 
         // create the window and return a handle to it
-        return Interop.User.CreateWindowEx(baseWindowStyle, className, application.Name ?? "Stride Application", windowStyle,
-            RenderingConstants.UseDefaultSize, RenderingConstants.UseDefaultSize, width, height, nint.Zero, nint.Zero, nint.Zero, nint.Zero);
+        return Interop.User.CreateWindowEx(baseWindowStyle, _defaultWindowClassName, _appName, windowStyle, RenderingConstants.UseDefaultSize, RenderingConstants.UseDefaultSize, _windowWidth, _windowHeight);
     }
 
-    private nint WindowMessageProcedure(nint hWnd, uint msg, nint wParam, nint lParam)
-        => (WindowMessage)msg switch
+    private nint WindowMessageProcedure(nint windowPointer, uint message, nint wParam, nint lParam)
+        => (WindowMessage)message switch
         {
-            //WindowMessage.EraseBackground => 1,
-            WindowMessage.Paint => HandlePaint(hWnd),
-            //WindowMessage.CompositionChanged => ApplyModernization(hWnd),
-            WindowMessage.Close => CloseWindow(),
-            _ => Interop.User.DefWindowProc(hWnd, msg, wParam, lParam) // always call the default handler for unhandled messages!
+            WindowMessage.EraseBackground when _isTransparent => (nint)1,
+            WindowMessage.Paint => HandlePaint(windowPointer),
+            WindowMessage.Close => CloseWindow(windowPointer),
+            // always call the default handler for unhandled messages!
+            _ => Interop.User.DefWindowProc(windowPointer, message, wParam, lParam)
         };
 
     private void RunMessageLoop()
@@ -129,11 +146,13 @@ public partial class RenderService(IApplicationRenderService applicationRenderSe
 
     private nint HandlePaint(nint windowPointer)
     {
+        Console.WriteLine($"{nameof(HandlePaint)} starting.");
         Interop.User.BeginPaint(windowPointer, out Paint ps);
 
         // if _gdiBitmap isn't initialized, no application painting can happen
         if (_gdiBitmap == nint.Zero)
         {
+            Console.WriteLine($"GDI bitmap not initialized, {nameof(HandlePaint)} ending.");
             Interop.User.EndPaint(windowPointer, ref ps);
             return nint.Zero;
         }
@@ -142,7 +161,7 @@ public partial class RenderService(IApplicationRenderService applicationRenderSe
         _applicationRenderService.PaintApplication();
 
         // create a memory device context compatible with the window's device context
-        nint windowDeviceContext = ps.hdc;
+        nint windowDeviceContext = ps.HardwareDeviceContext;
         nint memoryDeviceContext = Interop.Gdi.CreateCompatibleDC(windowDeviceContext);
 
         // select the GDI bitmap (which shares memory with the SKBitmap) into the memory DC
@@ -159,53 +178,70 @@ public partial class RenderService(IApplicationRenderService applicationRenderSe
 
         // end the paint message
         Interop.User.EndPaint(windowPointer, ref ps);
+        Console.WriteLine($"{nameof(HandlePaint)} ending.");
         return nint.Zero;
     }
 
-    private static nint CloseWindow()
+    private static nint CloseWindow(nint windowPointer)
     {
+        // get the stored GCHandle for user data set in CreateWindow
+        nint handlePtr = Interop.User.GetWindowLongPtr(windowPointer, RenderingConstants.UserData);
+        if (handlePtr != nint.Zero)
+        {
+            // free the allocated handle
+            GCHandle gch = GCHandle.FromIntPtr(handlePtr);
+            gch.Free();
+        }
+
+        // post the quit message to the operating system
         Interop.User.PostQuitMessage(0);
+
         return nint.Zero;
     }
 
-    private static void ApplyCustomization(nint windowPointer)
+    private nint ApplyStrideCustomizations(nint windowPointer)
     {
-        // set global alpha to allow some background to show through initially
-        Interop.User.SetLayeredWindowAttributes(windowPointer, 0, 230, RenderingConstants.SetLayeredWindowAlpha);
-
-        // remove the components that define the old title bar, and repaint (to get a mica look)
-        nint currentStyle = Interop.User.SetWindowLongPtr(windowPointer, RenderingConstants.UpdateWindowStyle, nint.Zero);
-        nint newStyle = (nint)((uint)currentStyle & ~RenderingConstants.StylesToRemove);
-        Interop.User.SetWindowLongPtr(windowPointer, RenderingConstants.UpdateWindowStyle, newStyle);
-        Interop.User.SetWindowPos(windowPointer, nint.Zero, 0, 0, 0, 0, RenderingConstants.ForceWindowFrameDraw);
-    }
-
-    private static nint ApplyModernization(nint windowPointer, IApplication application)
-    {
-        // enable non-client rendering
-        var ncRenderingEnabled = RenderingConstants.NonClientRenderingPolicy;
-        Interop.Dwm.DwmSetWindowAttribute(windowPointer, (int)WindowAttribute.NonClientRenderingPolicy, ref ncRenderingEnabled, sizeof(int));
-
-        // set dark mode
-        if (application.DarkMode == true)
+        // enable non-client rendering and acrylic backdrop for transparent title bar area
+        if (!_hasTitleBar)
         {
-            var immersiveDarkMode = 1;
-            Interop.Dwm.DwmSetWindowAttribute(windowPointer, (int)WindowAttribute.UseDarkMode, ref immersiveDarkMode, sizeof(int));
+            var ncRenderingEnabled = RenderingConstants.NonClientRenderingPolicy;
+            Interop.Dwm.DwmSetWindowAttribute(windowPointer, (int)WindowAttribute.NonClientRenderingPolicy, ref ncRenderingEnabled, sizeof(int))
+                .ThrowOnError(nameof(Interop.Dwm.DwmSetWindowAttribute));
         }
 
-        // transient window backdrop
-        var acrylicValue = RenderingConstants.DrawBackdropAsTransientWindow;
-        Interop.Dwm.DwmSetWindowAttribute(windowPointer, (int)WindowAttribute.WindowBackdropMaterial, ref acrylicValue, sizeof(int));
-
-        // enable window blur behind
-        if (application.Window?.Blur == true)
-        {
-            ApplyWindowBlur(windowPointer, WindowAccent.AcrylicBlurBehind);
-        }
+        // set dark mode or system default theme
+        var immersiveDarkMode = _isDarkMode ? 1 : 0;
+        Interop.Dwm.DwmSetWindowAttribute(windowPointer, (int)WindowAttribute.UseDarkMode, ref immersiveDarkMode, sizeof(int))
+            .ThrowOnError(nameof(Interop.Dwm.DwmSetWindowAttribute));
 
         // set corner preference on the window
-        var cornerPreference = (int)WindowAttribute.UseRoundedCorners;
-        Interop.Dwm.DwmSetWindowAttribute(windowPointer, (int)WindowAttribute.UseRoundedCorners, ref cornerPreference, sizeof(int));
+        var cornerPreference = RenderingConstants.UseRoundedCorners;
+        Interop.Dwm.DwmSetWindowAttribute(windowPointer, (int)WindowAttribute.RoundedCorners, ref cornerPreference, sizeof(int))
+            .ThrowOnError(nameof(Interop.Dwm.DwmSetWindowAttribute));
+
+        // apply transparency effects
+        if (_isTransparent)
+        {
+            // set window backdrop material
+            BlurBehind blurBehind = new(RenderingConstants.EnableBlurBehind | RenderingConstants.BlurBehindEntireWindow);
+            Interop.Dwm.DwmEnableBlurBehindWindow(windowPointer, ref blurBehind)
+                .ThrowOnError(nameof(Interop.Dwm.DwmEnableBlurBehindWindow));
+
+            // extend the rendering area up to the title bar for transparent blurry apps without a title bar
+            Margins margins = new(-1, -1, -1, -1);
+            Interop.Dwm.DwmExtendFrameIntoClientArea(windowPointer, ref margins)
+                .ThrowOnError(nameof(Interop.Dwm.DwmExtendFrameIntoClientArea));
+        }
+
+        // apply window blur
+        if (_hasBlur)
+        {
+            BlurBehind blurBehind = new(RenderingConstants.EnableBlurBehind | RenderingConstants.BlurBehindEntireWindow);
+            Interop.Dwm.DwmEnableBlurBehindWindow(windowPointer, ref blurBehind)
+                .ThrowOnError(nameof(Interop.Dwm.DwmEnableBlurBehindWindow));
+
+            ApplyWindowBlur(windowPointer, WindowAccent.AcrylicBlurBehind);
+        }
 
         return nint.Zero;
     }
@@ -232,26 +268,10 @@ public partial class RenderService(IApplicationRenderService applicationRenderSe
             SizeOfData = Marshal.SizeOf<AccentPolicy>()
         };
 
-        // try to apply the new acrylic/mica blur, fallback to the classic DWM blur behind on older Windows versions
         try
         {
-            int compositionResult = Interop.User.SetWindowCompositionAttribute(windowPointer, ref data);
-            uint windowCompositionErrorCode = Interop.Kernel.GetLastError();
-            if (compositionResult == 0 && windowCompositionErrorCode != 0)
-            {
-                Console.WriteLine($"Acrylic/Mica blur failed with error code: {windowCompositionErrorCode}.");
-                throw new ApplicationException();
-            }
-        }
-        catch(ApplicationException)
-        {
-            BlurBehind blurBehind = new(RenderingConstants.EnableBlurBehind | RenderingConstants.BlurBehindEntireWindow);
-            int result = Interop.Dwm.DwmEnableBlurBehindWindow(windowPointer, ref blurBehind);
-            uint enableBlurBehindErrorCode = Interop.Kernel.GetLastError();
-            if (result == 0 && enableBlurBehindErrorCode != 0)
-            {
-                Console.WriteLine($"{nameof(Interop.Dwm.DwmEnableBlurBehindWindow)} failed with error code: {enableBlurBehindErrorCode}.");
-            }
+            Interop.User.SetWindowCompositionAttribute(windowPointer, ref data)
+                .ThrowOnError(nameof(Interop.User.SetWindowCompositionAttribute));
         }
         finally
         {
@@ -263,5 +283,20 @@ public partial class RenderService(IApplicationRenderService applicationRenderSe
         }
 
         return nint.Zero;
+    }
+
+    private int GetBackgroundColor()
+    {
+        if (_isTransparent)
+        {
+            return (int)WindowBrush.Transparent;
+        }
+
+        if (_isDarkMode)
+        {
+            return (int)WindowBrush.DarkGray;
+        }
+
+        return (int)WindowBrush.LightGray;
     }
 }

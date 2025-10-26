@@ -23,7 +23,7 @@ internal static class Interop
         internal static extern ushort RegisterClassEx(ref WindowMessenger lpwcx);
 
         [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-        internal static extern nint CreateWindowEx(uint dwExStyle, string lpClassName, string lpWindowName, uint dwStyle, int x, int y, int nWidth, int nHeight, nint hWndParent, nint hMenu, nint hInstance, nint lpParam);
+        internal static extern nint CreateWindowEx(uint dwExStyle, string lpClassName, string lpWindowName, uint dwStyle, int x, int y, int nWidth, int nHeight, nint hWndParent = 0, nint hMenu = 0, nint hInstance = 0, nint lpParam = 0);
         
         [DllImport("user32.dll")]
         internal static extern int GetMessage(out Message lpMsg, nint hWnd, uint wMsgFilterMin, uint wMsgFilterMax);
@@ -57,8 +57,24 @@ internal static class Interop
         [DllImport("user32.dll")]
         internal static extern bool EndPaint(nint hWnd, ref Paint lpPaint);
 
+        /// <summary>
+        /// Sets information about the specified window. Used with GWLP_USERDATA to get a pointer (the GCHandle).
+        /// </summary>
+        /// <param name="hWnd">A handle to the window.</param>
+        /// <param name="nIndex">The zero-based offset to the value to be retrieved (e.g., GWLP_USERDATA).</param>
+        /// <param name="dwNewLong">The new information to set about the specified window.</param>
+        /// <returns>The requested value.</returns>
         [DllImport("user32.dll", SetLastError = true)]
         internal static extern nint SetWindowLongPtr(nint hWnd, int nIndex, nint dwNewLong);
+
+        /// <summary>
+        /// Retrieves information about the specified window. Used with GWLP_USERDATA to retrieve a pointer (the GCHandle).
+        /// </summary>
+        /// <param name="hWnd">A handle to the window.</param>
+        /// <param name="nIndex">The zero-based offset to the value to be retrieved (e.g., GWLP_USERDATA).</param>
+        /// <returns>The requested value.</returns>
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern nint GetWindowLongPtr(nint hWnd, int nIndex);
 
         [DllImport("user32.dll")]
         internal static extern bool SetWindowPos(nint hWnd, nint hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
@@ -75,11 +91,14 @@ internal static class Interop
     /// </summary>
     internal static class Dwm
     {
-        [DllImport("dwmapi.dll")]
+        [DllImport("dwmapi.dll", SetLastError = true)]
         internal static extern int DwmSetWindowAttribute(nint hwnd, int dwAttribute, ref int pvAttribute, int cbAttribute);
 
         [DllImport("dwmapi.dll", SetLastError = true)]
         internal static extern int DwmEnableBlurBehindWindow(nint hWnd, ref BlurBehind pBlurBehind);
+
+        [DllImport("dwmapi.dll", SetLastError = true)]
+        public static extern int DwmExtendFrameIntoClientArea(nint hWnd, ref Margins pMarInset);
     }
 
     /// <summary>

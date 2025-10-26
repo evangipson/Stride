@@ -16,6 +16,8 @@ public class Window : IWindow
 
     public bool? TitleBar { get; set; }
 
+    public bool? Transparent { get; set; }
+
     public IList<IComponent> Components
     {
         get => _components ??= [];

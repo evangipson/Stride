@@ -2,10 +2,15 @@
 using Stride.Core.Factories;
 using Stride.Renderer.Services;
 
-var window = new WindowBuilder().Create("Main Window", 800, 600, blur: true, titleBar: false).Build();
+// create the window
+var window = new WindowBuilder().Create("Main Window", 800, 600, blur: true, titleBar: true, transparent: true).Build();
 
-var strideApp = new ApplicationFactory().CreateApplication("Simple Stride App", window, darkMode: false);
+// create the application
+var app = new ApplicationFactory().CreateApplication("Simple Stride App", window, darkMode: true);
 
+// use a new application renderer
 using var appRenderer = new ApplicationRenderService();
+
+// create a new renderer and render the app
 var renderer = new RenderService(appRenderer);
-renderer.Render(strideApp);
+renderer.Render(app);
