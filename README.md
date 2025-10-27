@@ -9,14 +9,16 @@ using Stride.Core.Builders;
 using Stride.Core.Factories;
 using Stride.Renderer.Services;
 
-// create a blurry, transparent 800x600 window with a title bar
-var window = new WindowBuilder()
-    .Create("Main Window", 800, 600, blur: true, titleBar: true, transparent: true)
+// create an 800x600 Stride dark mode application
+// with blur, transparency, and a title bar
+var app = new ApplicationBuilder()
+    .Create("Simple Stride App")
+    .WithWindow("Main Window", 800, 600)
+    .WithBlur()
+    .WithTitleBar()
+    .WithDarkMode()
+    .WithTransparency()
     .Build();
-
-// create a dark mode application
-var app = new ApplicationFactory()
-    .CreateApplication("Simple Stride App", window, darkMode: true);
 
 // use a new application renderer
 using var appRenderer = new ApplicationRenderService();
@@ -52,7 +54,7 @@ var provider = builder.Services.BuildServiceProvider();
 var stride = provider.GetRequiredService<IStrideService>();
 
 // create, customize, and run the Stride app
-stride.CreateApp("Dependency Injected Stride App", 800, 600)
+stride.Create("Dependency Injected Stride App", 800, 600)
     .WithBlur()
     .WithTitleBar()
     .WithDarkMode()

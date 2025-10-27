@@ -15,7 +15,7 @@ var provider = builder.Services.BuildServiceProvider();
 var stride = provider.GetRequiredService<IStrideService>();
 
 // create, customize, and run the Stride app
-stride.CreateApp("Dependency Injected Stride App", 800, 600)
+stride.Create("Dependency Injected Stride App")
     .WithBlur()
     .WithTitleBar()
     .WithDarkMode()

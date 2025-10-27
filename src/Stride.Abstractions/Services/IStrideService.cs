@@ -2,7 +2,7 @@
 
 public interface IStrideService
 {
-    IStrideService CreateApp(string appName, int width, int height);
+    IStrideService Create(string? appName = null, string? title = null, int? width = null, int? height = null);
 
     IStrideService WithDarkMode();
 

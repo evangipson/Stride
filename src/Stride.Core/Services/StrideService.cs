@@ -1,83 +1,80 @@
 ﻿using Stride.Abstractions.Builders;
-using Stride.Abstractions.Factories;
 using Stride.Abstractions.Models;
 using Stride.Abstractions.Services;
+using Stride.Core.Builders;
 
 namespace Stride.Core.Services;
 
-public class StrideService(IApplicationFactory applicationFactory,
-    IWindowBuilder windowBuilder,
-    IApplicationRenderService applicationRenderService,
-    IRenderService renderService) : IStrideService
+public class StrideService(IApplicationRenderService applicationRenderService, IRenderService renderService) : IStrideService
 {
-    private readonly IApplicationFactory _applicationFactory = applicationFactory ?? throw new ArgumentNullException(nameof(applicationFactory));
-    private readonly IWindowBuilder _windowBuilder = windowBuilder ?? throw new ArgumentNullException(nameof(windowBuilder));
     private readonly IApplicationRenderService _applicationRenderService = applicationRenderService ?? throw new ArgumentNullException(nameof(_applicationRenderService));
     private readonly IRenderService _renderService = renderService ?? throw new ArgumentNullException(nameof(renderService));
 
+    private IApplicationBuilder? _applicationBuilder;
     private IApplication? _application;
 
-    public IStrideService CreateApp(string appName, int width, int height)
+    public IStrideService Create(string? appName = null, string? title = null, int? width = null, int? height = null)
     {
-        var window = _windowBuilder.Create("Main Window", height, width).Build();
-        _application = _applicationFactory.CreateApplication(appName, window);
+        _applicationBuilder = new ApplicationBuilder()
+            .Create(appName)
+            .WithWindow(title, width, height);
 
         return this;
     }
 
     public IStrideService WithDarkMode()
     {
-        if (_application?.Window == null)
+        if (_applicationBuilder == null)
         {
-            throw new ApplicationException("You must call CreateApp() before attempting to set Stride application options.");
+            throw new ApplicationException("You must call Create() before attempting to set Stride application options.");
         }
 
-        _application.DarkMode = true;
+        _applicationBuilder.WithDarkMode();
         return this;
     }
 
     public IStrideService WithBlur()
     {
-        if (_application?.Window == null)
+        if (_applicationBuilder == null)
         {
-            throw new ApplicationException("You must call CreateApp() before attempting to set Stride application options.");
+            throw new ApplicationException("You must call Create() before attempting to set Stride application options.");
         }
 
-        _application.Window.Blur = true;
+        _applicationBuilder.WithBlur();
         return this;
     }
 
     public IStrideService WithTitleBar()
     {
-        if (_application?.Window == null)
+        if (_applicationBuilder == null)
         {
-            throw new ApplicationException("You must call CreateApp() before attempting to set Stride application options.");
+            throw new ApplicationException("You must call Create() before attempting to set Stride application options.");
         }
 
-        _application.Window.TitleBar = true;
+        _applicationBuilder.WithTitleBar();
         return this;
     }
 
     public IStrideService WithTransparency()
     {
-        if (_application?.Window == null)
+        if (_applicationBuilder == null)
         {
-            throw new ApplicationException("You must call CreateApp() before attempting to set Stride application options.");
+            throw new ApplicationException("You must call Create() before attempting to set Stride application options.");
         }
 
-        _application.Window.Transparent = true;
+        _applicationBuilder.WithTransparency();
         return this;
     }
 
     public IStrideService Run()
     {
-        if (_application?.Window == null)
+        if (_applicationBuilder == null)
         {
-            throw new ApplicationException("You must call CreateApp() before attempting to run the Stride application.");
+            throw new ApplicationException("You must call Create() before attempting to run the Stride application.");
         }
 
+        _application = _applicationBuilder.Build();
         _renderService.Render(_application);
-
         return this;
     }
 }
