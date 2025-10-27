@@ -6,7 +6,6 @@ Download this NuGet package, then create and run an app:
 
 ```csharp
 using Stride.Core.Builders;
-using Stride.Core.Factories;
 using Stride.Renderer.Services;
 
 // create an 800x600 Stride dark mode application
