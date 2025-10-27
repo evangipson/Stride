@@ -11,7 +11,7 @@ public class StrideService(IApplicationRenderService applicationRenderService, I
     private readonly IRenderService _renderService = renderService ?? throw new ArgumentNullException(nameof(renderService));
 
     private IApplicationBuilder? _applicationBuilder;
-    private IApplication? _application;
+    private Application? _application;
 
     public IStrideService Create(string? appName = null, string? title = null, int? width = null, int? height = null)
     {

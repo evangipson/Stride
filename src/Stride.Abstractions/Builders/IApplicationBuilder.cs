@@ -66,8 +66,15 @@ public interface IApplicationBuilder
     IApplicationBuilder WithTitleBar(bool? titleBar = true);
 
     /// <summary>
+    /// Adds a component to the main Stride application window.
+    /// </summary>
+    /// <param name="component">The component to add.</param>
+    /// <returns>The <see cref="IApplicationBuilder"/>.</returns>
+    IApplicationBuilder AddComponent(Component component);
+
+    /// <summary>
     /// Builds the application with all customizations applied.
     /// </summary>
     /// <returns>The Stride application.</returns>
-    IApplication Build();
+    Application Build();
 }

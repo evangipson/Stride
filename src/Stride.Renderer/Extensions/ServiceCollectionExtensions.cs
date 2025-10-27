@@ -7,7 +7,6 @@ namespace Stride.Renderer.Extensions;
 public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddStrideRenderer(this IServiceCollection services)
-        => services
-            .AddTransient<IApplicationRenderService, ApplicationRenderService>()
+        => services.AddTransient<IApplicationRenderService, ApplicationRenderService>()
             .AddTransient<IRenderService, RenderService>();
 }

@@ -94,6 +94,19 @@ internal static partial class Interop
 
         [LibraryImport("user32.dll", SetLastError = true)]
         internal static partial int SetWindowCompositionAttribute(nint hWnd, ref WindowCompositionAttributeData data);
+
+        [LibraryImport("user32.dll", EntryPoint = "SetWindowTextW", SetLastError = true, StringMarshalling = StringMarshalling.Utf16)]
+        internal static partial int SetWindowText(nint hWnd, string lpString);
+
+        /// <summary>
+        /// Sets class information about the specified window.
+        /// </summary>
+        /// <param name="hWnd">A handle to the window.</param>
+        /// <param name="nIndex">The zero-based offset to the value to be retrieved (e.g., GWLP_USERDATA).</param>
+        /// <param name="dwNewLong">The new class information to set about the specified window.</param>
+        /// <returns>The requested value.</returns>
+        [LibraryImport("user32.dll", EntryPoint = "SetClassLongPtrW", SetLastError = true)]
+        internal static partial nint SetClassLongPtr(nint hWnd, int nIndex, nint dwNewLong);
     }
 
     /// <summary>

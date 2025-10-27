@@ -11,9 +11,24 @@ internal enum WindowStyle : uint
     Default = 0x00000000,
 
     /// <summary>
-    /// The window is a layered window.
+    /// The window is a child window.
+    /// <para>A window with this style cannot have a menu bar.</para>
+    /// <para>Cannot be used with the <see cref="Popup"/> style.</para>
     /// </summary>
-    Layered = 0x00080000,
+    Child = 0x40000000,
+
+    /// <summary>
+    /// The window is a pop-up window.
+    /// <para>Cannot be used with the <see cref="Child"/> style.</para>
+    /// </summary>
+    Popup = 0x80000000,
+
+    /// <summary>
+    /// Excludes the area occupied by child windows when drawing occurs within
+    /// the parent window.
+    /// <para>This style is used when creating the parent window.</para>
+    /// </summary>
+    ClipChildren = 0x02000000,
 
     /// <summary>
     /// The window has a thin-line border.
@@ -67,4 +82,9 @@ internal enum WindowStyle : uint
     /// <para>Must include the <see cref="SystemMenu"/> style.</para>
     /// </summary>
     MaximizeBox = 0x00010000,
+
+    /// <summary>
+    /// The window is initially visible.
+    /// </summary>
+    Visible = 0x10000000,
 }

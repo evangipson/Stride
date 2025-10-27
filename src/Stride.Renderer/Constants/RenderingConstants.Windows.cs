@@ -22,6 +22,14 @@ internal static class RenderingConstants
     internal const int UserData = -21;
 
     /// <summary>
+    /// Sets the size, in bytes, of the extra window memory associated with each window in the class.
+    /// <para>
+    /// Setting this value does not change the number of extra bytes already allocated.
+    /// </para>
+    /// </summary>
+    internal const int UpdateBackgroundBrush = -10;
+
+    /// <summary>
     /// Signals an interactive dark mode.
     /// <para>Windows 10 1809+ only.</para>
     /// </summary>
@@ -40,7 +48,8 @@ internal static class RenderingConstants
         | WindowStyle.SystemMenu
         | WindowStyle.Resizeable
         | WindowStyle.MinimizeBox
-        | WindowStyle.MaximizeBox);
+        | WindowStyle.MaximizeBox
+        | WindowStyle.ClipChildren);
 
     /// <summary>
     /// A flag that instructs the operating system to use rounded corners for a window.

@@ -11,5 +11,5 @@ public interface IRenderService
     /// Renders the <paramref name="application"/>.
     /// </summary>
     /// <param name="application">The Stride application to render.</param>
-    void Render(IApplication application);
+    void Render(Application application);
 }

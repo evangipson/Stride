@@ -1,7 +1,6 @@
 ﻿using Stride.Abstractions.Builders;
 using Stride.Abstractions.Models;
 using Stride.Core.Constants;
-using Stride.Core.Models;
 
 namespace Stride.Core.Builders;
 
@@ -15,6 +14,7 @@ public class WindowBuilder : IWindowBuilder
         _window.Title = title ?? StrideConstants.DefaultWindowTitle;
         _window.Width = width ?? StrideConstants.DefaultWindowWidth;
         _window.Height = height ?? StrideConstants.DefaultWindowHeight;
+        _window.Parent = null;
         return this;
     }
 
@@ -36,11 +36,12 @@ public class WindowBuilder : IWindowBuilder
         return this;
     }
 
-    public IWindowBuilder AddComponent(IComponent component)
+    public IWindowBuilder AddComponent(Component component)
     {
+        component.Parent = _window;
         _window.Components.Add(component);
         return this;
     }
 
-    public IWindow Build() => _window;
+    public Window Build() => _window;
 }

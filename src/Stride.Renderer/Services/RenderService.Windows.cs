@@ -15,12 +15,17 @@ public partial class RenderService(IApplicationRenderService applicationRenderSe
 {
     private readonly IApplicationRenderService _applicationRenderService = applicationRenderService ?? throw new ArgumentNullException(nameof(applicationRenderService));
 
+    // window fields
     private const string _defaultWindowClassName = "StrideWindowClassName";
     private GCHandle _classNameGCHandle;
     private nint _classNamePointer = nint.Zero;
     private const string _defaultApplicationName = "Stride Application";
     private const int _defaultWindowWidth = 800;
     private const int _defaultWindowHeight = 600;
+
+    // component fields
+    private Dictionary<Guid, GCHandle> _componentGCHandles = [];
+    private Dictionary<Guid, nint> _componentPointers = [];
 
     // static field required for lifetime management
     private static MessageLoop.WindowProcedure? _windowsMessageProcedure;
@@ -33,24 +38,26 @@ public partial class RenderService(IApplicationRenderService applicationRenderSe
     private bool _hasTitleBar;
     private bool _hasBlur;
     private nint _gdiBitmap;
+    private nint _instance;
 
     /// <inheritdoc/>
-    public void Render(IApplication application)
+    public void Render(Application application)
     {
         // throw if there is no window on the application
-        if (application?.Window == null)
+        if (application?.MainWindow == null)
         {
             throw new ApplicationException("Stride must have a window to render.");
         }
 
         // populate Stride application fields
         _appName = application.Name ?? _defaultApplicationName;
-        _windowWidth = application.Window.Width ?? _defaultWindowWidth;
-        _windowHeight = application.Window.Height ?? _defaultWindowHeight;
-        _isTransparent = application.Window.Transparent ?? false;
+        _windowWidth = application.MainWindow.Width ?? _defaultWindowWidth;
+        _windowHeight = application.MainWindow.Height ?? _defaultWindowHeight;
+        _isTransparent = application.MainWindow.Transparent ?? false;
         _isDarkMode = application.DarkMode ?? false;
-        _hasTitleBar = application.Window.TitleBar ?? false;
-        _hasBlur = application.Window.Blur ?? false;
+        _hasTitleBar = application.MainWindow.TitleBar ?? false;
+        _hasBlur = application.MainWindow.Blur ?? false;
+        _instance = Interop.Kernel.GetModuleHandle(null);
 
         Console.WriteLine("\nRendering Stride application with the following config:");
         Console.WriteLine($"  Application Name: {_appName}");
@@ -73,10 +80,23 @@ public partial class RenderService(IApplicationRenderService applicationRenderSe
         Interop.User.SetWindowLongPtr(windowHandle, RenderingConstants.UserData, GCHandle.ToIntPtr(gch));
 
         // apply Stride customizations
-        ApplyStrideCustomizations(windowHandle);
+        ApplyStrideWindowCustomizations(windowHandle);
 
         // display the window
         Interop.User.ShowWindow(windowHandle, (int)WindowMessage.Show);
+
+        // add any components
+        foreach (var component in application.MainWindow.Components)
+        {
+            var componentHandle = CreateComponent(component, windowHandle);
+            if (componentHandle == nint.Zero)
+            {
+                throw new ApplicationException($"Component creation failed for {component.Title}, id: {component.Id}.");
+            }
+
+            // apply Stride customizations
+            ApplyStrideComponentCustomizations(componentHandle);
+        }
 
         // run an initial paint of the application
         _applicationRenderService.PaintApplication();
@@ -95,10 +115,9 @@ public partial class RenderService(IApplicationRenderService applicationRenderSe
         // create and populate a WindowMessenger
         _windowsMessageProcedure = WindowMessageProcedure;
         var windowsProcedurePointer = Marshal.GetFunctionPointerForDelegate(_windowsMessageProcedure);
-        var instance = Interop.Kernel.GetModuleHandle(null);
         var backgroundColor = GetBackgroundColor();
         var backgroundHandle = Interop.Gdi.GetStockObject(backgroundColor);
-        WindowMessenger messenger = new(windowsProcedurePointer, instance, backgroundHandle, _classNamePointer);
+        WindowMessenger messenger = new(windowsProcedurePointer, _instance, backgroundHandle, _classNamePointer);
 
         // call the registration function
         Interop.User.RegisterClassEx(ref messenger)
@@ -112,15 +131,47 @@ public partial class RenderService(IApplicationRenderService applicationRenderSe
         _applicationRenderService.SetApplicationCanvas(_windowWidth, _windowHeight);
 
         // build the window style based on Stride application and window options
-        var baseWindowStyle = _hasTitleBar
-            ? (uint)WindowStyle.Default
-            : (uint)WindowStyle.Layered;
+        var windowExtendedStyle = (uint)ExtendedWindowStyle.Default;
         var windowStyle = _hasTitleBar
             ? RenderingConstants.BaseWindowStyle
-            : (uint)WindowStyle.Resizeable;
+            : (uint)(WindowStyle.Resizeable | WindowStyle.ClipChildren);
 
         // create the window and return a handle to it
-        return Interop.User.CreateWindowEx(baseWindowStyle, _defaultWindowClassName, _appName, windowStyle, RenderingConstants.UseDefaultSize, RenderingConstants.UseDefaultSize, _windowWidth, _windowHeight);
+        return Interop.User.CreateWindowEx(windowExtendedStyle, _defaultWindowClassName, _appName, windowStyle,
+            RenderingConstants.UseDefaultSize, RenderingConstants.UseDefaultSize, _windowWidth, _windowHeight);
+    }
+
+    private nint CreateComponent(Component component, nint windowPointer)
+    {
+        // get a pointer to the component title string
+        var componentClassName = GetComponentClass(component);
+        _componentGCHandles.Add(component.Id, GCHandle.Alloc(componentClassName, GCHandleType.Pinned));
+        _componentPointers.Add(component.Id, Marshal.StringToHGlobalUni(componentClassName));
+
+        // set up a window messenger struct to populate component class information
+        var backgroundHandle = Interop.Gdi.GetStockObject((int)WindowBrush.Black);
+        Console.WriteLine($"Got background brush handle for {component.Title} (id: {component.Id}): 0x{backgroundHandle:x8}.");
+        WindowMessenger messenger = new(nint.Zero, _instance, backgroundHandle, _componentPointers.GetValueOrDefault(component.Id));
+
+        // register the component class
+        Interop.User.RegisterClassEx(ref messenger)
+            .ThrowOnError(nameof(Interop.User.RegisterClassEx));
+
+        // create the component
+        var componentExtendedStyle = (uint)ExtendedWindowStyle.Default;
+        var componentStyle = (uint)(WindowStyle.Child | WindowStyle.Visible);
+        var componentHandle = Interop.User.CreateWindowEx(componentExtendedStyle, componentClassName, component.Id.ToString(), componentStyle,
+            RenderingConstants.UseDefaultSize, RenderingConstants.UseDefaultSize, 100, 100, windowPointer);
+
+        // set the component text if there is any
+        if (component is StaticText staticTextComponent && !string.IsNullOrWhiteSpace(staticTextComponent.Content))
+        {
+            Interop.User.SetWindowText(componentHandle, staticTextComponent.Content)
+                .ThrowOnError(nameof(Interop.User.SetWindowText));
+        }
+
+        // return the component handle
+        return componentHandle;
     }
 
     private nint WindowMessageProcedure(nint windowPointer, uint message, nint wParam, nint lParam)
@@ -207,11 +258,25 @@ public partial class RenderService(IApplicationRenderService applicationRenderSe
             _classNamePointer = nint.Zero;
         }
 
-        // free the GCHandle if you used it for pinning
+        // free the main class name handle
         if (_classNameGCHandle.IsAllocated)
         {
             _classNameGCHandle.Free();
         }
+
+        // free the unmanaged memory allocated for component class name strings
+        foreach (var componentPointer in _componentPointers)
+        {
+            Marshal.FreeHGlobal(componentPointer.Value);
+        }
+        _componentPointers.Clear();
+
+        // free the component class name handles
+        foreach (var componentHandle in _componentGCHandles)
+        {
+            componentHandle.Value.Free();
+        }
+        _componentGCHandles.Clear();
 
         // post the quit message to the operating system
         Interop.User.PostQuitMessage(0);
@@ -219,7 +284,7 @@ public partial class RenderService(IApplicationRenderService applicationRenderSe
         return nint.Zero;
     }
 
-    private nint ApplyStrideCustomizations(nint windowPointer)
+    private nint ApplyStrideWindowCustomizations(nint windowPointer)
     {
         // enable non-client rendering and acrylic backdrop for transparent title bar area
         if (!_hasTitleBar)
@@ -264,6 +329,16 @@ public partial class RenderService(IApplicationRenderService applicationRenderSe
             // next, use acrylic/mica blur if possible
             ApplyWindowBlur(windowPointer, WindowAccent.AcrylicBlurBehind);
         }
+
+        return nint.Zero;
+    }
+
+    private nint ApplyStrideComponentCustomizations(nint componentHandle)
+    {
+        // set dark mode or system default theme
+        //var immersiveDarkMode = _isDarkMode ? 1 : 0;
+        //Interop.Dwm.DwmSetWindowAttribute(componentHandle, (int)WindowAttribute.UseDarkMode, ref immersiveDarkMode, sizeof(int))
+        //    .ThrowOnError(nameof(Interop.Dwm.DwmSetWindowAttribute));
 
         return nint.Zero;
     }
@@ -321,4 +396,10 @@ public partial class RenderService(IApplicationRenderService applicationRenderSe
 
         return (int)WindowBrush.LightGray;
     }
+
+    private static string GetComponentClass(Component component) => component switch
+    {
+        StaticText => "Static",
+        _ => "Static"
+    };
 }

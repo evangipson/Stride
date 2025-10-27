@@ -52,11 +52,11 @@ public interface IWindowBuilder
     /// </summary>
     /// <param name="component">The component to add.</param>
     /// <returns>The <see cref="IWindowBuilder"/>.</returns>
-    IWindowBuilder AddComponent(IComponent component);
+    IWindowBuilder AddComponent(Component component);
 
     /// <summary>
     /// Builds the window with all customizations applied.
     /// </summary>
     /// <returns>The window.</returns>
-    IWindow Build();
+    Window Build();
 }

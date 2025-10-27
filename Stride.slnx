@@ -2,6 +2,7 @@
   <Folder Name="/examples/">
     <Project Path="examples/DependencyInjectionStrideApp/DependencyInjectionStrideApp.csproj" Id="17c1aaec-eaf5-4aa0-a2c1-20072845179b" />
     <Project Path="examples/SimpleStrideApp/SimpleStrideApp.csproj" />
+    <Project Path="examples/StrideAppWithComponents/StrideAppWithComponents.csproj" Id="96051a0e-fe9f-4be6-bc39-bc35c8cf8903" />
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/Stride.Abstractions/Stride.Abstractions.csproj" />

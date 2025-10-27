@@ -1,7 +1,6 @@
 ﻿using Stride.Abstractions.Builders;
 using Stride.Abstractions.Models;
 using Stride.Core.Constants;
-using Stride.Core.Models;
 
 namespace Stride.Core.Builders;
 
@@ -46,7 +45,7 @@ public class ApplicationBuilder : IApplicationBuilder
     {
         if (_windowBuilder == null)
         {
-            throw new ApplicationException("Must call WithWindow() before changing any window properties.");
+            throw new ApplicationException("Must call Create() before changing any application properties.");
         }
 
         _windowBuilder.WithBlur(blur);
@@ -57,7 +56,7 @@ public class ApplicationBuilder : IApplicationBuilder
     {
         if (_windowBuilder == null)
         {
-            throw new ApplicationException("Must call WithWindow() before changing any window properties.");
+            throw new ApplicationException("Must call Create() before changing any application properties.");
         }
 
         _windowBuilder.WithTransparency(transparency);
@@ -68,21 +67,32 @@ public class ApplicationBuilder : IApplicationBuilder
     {
         if (_windowBuilder == null)
         {
-            throw new ApplicationException("Must call WithWindow() before changing any window properties.");
+            throw new ApplicationException("Must call Create() before changing any application properties.");
         }
 
         _windowBuilder.WithTitleBar(titleBar);
         return this;
     }
 
-    public IApplication Build()
+    public IApplicationBuilder AddComponent(Component component)
+    {
+        if (_windowBuilder == null)
+        {
+            throw new ApplicationException("Must call Create() before changing any application properties.");
+        }
+
+        _windowBuilder.AddComponent(component);
+        return this;
+    }
+
+    public Application Build()
     {
         if (_application == null || _windowBuilder == null)
         {
             throw new ApplicationException("Must call Create() before building the application.");
         }
 
-        _application.Window = _windowBuilder.Build();
+        _application.MainWindow = _windowBuilder.Build();
         return _application;
     }
 }
