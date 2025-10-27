@@ -6,18 +6,23 @@ namespace Stride.Renderer.Models;
 /// Used to represent necessary information for a window paint message.
 /// </summary>
 [StructLayout(LayoutKind.Sequential)]
-public struct Paint
+internal struct Paint
 {
-    public nint HardwareDeviceContext;
-    
-    public bool Erase;
-    
-    public Rectangle Rectangle;
-    
-    public bool Restore;
-    
-    public bool Update;
+    internal nint HardwareDeviceContext;
 
-    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 32)]
-    public byte[] Reserved;
+    internal int Erase;
+
+    internal int RectangleLeft;
+
+    internal int RectangleTop;
+
+    internal int RectangleRight;
+
+    internal int RectangleBottom;
+
+    internal int Restore;
+
+    internal int Update;
+
+    internal Reserved32Bytes Reserved;
 }

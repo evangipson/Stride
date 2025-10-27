@@ -10,7 +10,7 @@ namespace Stride.Renderer.Models;
 /// <param name="backgroundBrush">The background brush to use.</param>
 /// <param name="className">The class name for the window.</param>
 [StructLayout(LayoutKind.Sequential)]
-public struct WindowMessenger(nint callback, nint instance, nint backgroundBrush, string className)
+public struct WindowMessenger(nint callback, nint instance, nint backgroundBrush, nint className)
 {
     /// <summary>
     /// The size of this structure, in bytes.
@@ -61,14 +61,12 @@ public struct WindowMessenger(nint callback, nint instance, nint backgroundBrush
     /// <summary>
     /// A null-terminated string that specifies the resource name of the class menu. (Usually null)
     /// </summary>
-    [MarshalAs(UnmanagedType.LPWStr)]
-    public string? MenuName = null;
+    public nint MenuName = nint.Zero;
 
     /// <summary>
     /// A null-terminated string that names the window class. Used in CreateWindowEx.
     /// </summary>
-    [MarshalAs(UnmanagedType.LPWStr)]
-    public string ClassName = className;
+    public nint ClassName = className;
 
     /// <summary>
     /// A handle to a small icon associated with the window class. (For the taskbar)

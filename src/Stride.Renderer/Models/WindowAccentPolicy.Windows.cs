@@ -1,12 +1,11 @@
 ﻿using System.Runtime.InteropServices;
-using Stride.Renderer.Enums;
 
 namespace Stride.Renderer.Models;
 
 [StructLayout(LayoutKind.Sequential)]
 internal struct AccentPolicy
 {
-    internal WindowAccent WindowAccent;
+    internal int WindowAccent;
 
     internal uint AccentFlags;
 

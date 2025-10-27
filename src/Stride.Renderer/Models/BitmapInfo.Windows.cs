@@ -12,16 +12,15 @@ namespace Stride.Renderer.Models;
 /// <param name="compression">An optional number that represents bitmap compression, defaults to <c>0</c>.</param>
 /// <param name="imageSize">An optional total size of the bitmap, defaults to <c>0</c>.</param>
 [StructLayout(LayoutKind.Sequential)]
-public struct BitmapInfo(int width, int height, ushort? planes = null, ushort? bitCount = null, uint? compression = null, uint? imageSize = null)
+internal struct BitmapInfo(int width, int height, ushort? planes = null, ushort? bitCount = null, uint? compression = null, uint? imageSize = null)
 {
     /// <summary>
     /// Header information about a bitmap.
     /// </summary>
-    public BitmapInfoHeader Header = new(width, height, planes, bitCount, compression, imageSize);
+    internal BitmapInfoHeader Header = new(width, height, planes, bitCount, compression, imageSize);
 
     /// <summary>
     /// The amount of colors a bitmap has.
     /// </summary>
-    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 256)]
-    public uint[]? Colors;
+    internal Reserved256Bytes Colors;
 }

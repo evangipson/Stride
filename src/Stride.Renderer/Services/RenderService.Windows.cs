@@ -16,6 +16,8 @@ public partial class RenderService(IApplicationRenderService applicationRenderSe
     private readonly IApplicationRenderService _applicationRenderService = applicationRenderService ?? throw new ArgumentNullException(nameof(applicationRenderService));
 
     private const string _defaultWindowClassName = "StrideWindowClassName";
+    private GCHandle _classNameGCHandle;
+    private nint _classNamePointer = nint.Zero;
     private const string _defaultApplicationName = "Stride Application";
     private const int _defaultWindowWidth = 800;
     private const int _defaultWindowHeight = 600;
@@ -85,13 +87,18 @@ public partial class RenderService(IApplicationRenderService applicationRenderSe
 
     private nint CreateWindow()
     {
+        // get a pointer to the default window class name const string
+        var className = _defaultWindowClassName;
+        _classNameGCHandle = GCHandle.Alloc(className, GCHandleType.Pinned);
+        _classNamePointer = Marshal.StringToHGlobalUni(className);
+
         // create and populate a WindowMessenger
         _windowsMessageProcedure = WindowMessageProcedure;
         var windowsProcedurePointer = Marshal.GetFunctionPointerForDelegate(_windowsMessageProcedure);
         var instance = Interop.Kernel.GetModuleHandle(null);
         var backgroundColor = GetBackgroundColor();
         var backgroundHandle = Interop.Gdi.GetStockObject(backgroundColor);
-        WindowMessenger messenger = new(windowsProcedurePointer, instance, backgroundHandle, _defaultWindowClassName);
+        WindowMessenger messenger = new(windowsProcedurePointer, instance, backgroundHandle, _classNamePointer);
 
         // call the registration function
         Interop.User.RegisterClassEx(ref messenger)
@@ -182,7 +189,7 @@ public partial class RenderService(IApplicationRenderService applicationRenderSe
         return nint.Zero;
     }
 
-    private static nint CloseWindow(nint windowPointer)
+    private nint CloseWindow(nint windowPointer)
     {
         // get the stored GCHandle for user data set in CreateWindow
         nint handlePtr = Interop.User.GetWindowLongPtr(windowPointer, RenderingConstants.UserData);
@@ -191,6 +198,19 @@ public partial class RenderService(IApplicationRenderService applicationRenderSe
             // free the allocated handle
             GCHandle gch = GCHandle.FromIntPtr(handlePtr);
             gch.Free();
+        }
+
+        // free the unmanaged memory allocated for the class name string
+        if (_classNamePointer != nint.Zero)
+        {
+            Marshal.FreeHGlobal(_classNamePointer);
+            _classNamePointer = nint.Zero;
+        }
+
+        // free the GCHandle if you used it for pinning
+        if (_classNameGCHandle.IsAllocated)
+        {
+            _classNameGCHandle.Free();
         }
 
         // post the quit message to the operating system
@@ -219,15 +239,9 @@ public partial class RenderService(IApplicationRenderService applicationRenderSe
         Interop.Dwm.DwmSetWindowAttribute(windowPointer, (int)WindowAttribute.RoundedCorners, ref cornerPreference, sizeof(int))
             .ThrowOnError(nameof(Interop.Dwm.DwmSetWindowAttribute));
 
-        // apply transparency effects
+        // extend the rendering area up to the title bar for transparent apps
         if (_isTransparent)
         {
-            // set window backdrop material
-            BlurBehind blurBehind = new(RenderingConstants.EnableBlurBehind | RenderingConstants.BlurBehindEntireWindow);
-            Interop.Dwm.DwmEnableBlurBehindWindow(windowPointer, ref blurBehind)
-                .ThrowOnError(nameof(Interop.Dwm.DwmEnableBlurBehindWindow));
-
-            // extend the rendering area up to the title bar for transparent blurry apps without a title bar
             Margins margins = new(-1, -1, -1, -1);
             Interop.Dwm.DwmExtendFrameIntoClientArea(windowPointer, ref margins)
                 .ThrowOnError(nameof(Interop.Dwm.DwmExtendFrameIntoClientArea));
@@ -236,10 +250,18 @@ public partial class RenderService(IApplicationRenderService applicationRenderSe
         // apply window blur
         if (_hasBlur)
         {
-            BlurBehind blurBehind = new(RenderingConstants.EnableBlurBehind | RenderingConstants.BlurBehindEntireWindow);
+            // first, make sure DWM knows to enable blur behind the entire window region
+            BlurBehind blurBehind = new()
+            {
+                Flags = RenderingConstants.EnableBlurBehind | RenderingConstants.BlurBehindEntireWindow,
+                Enable = 1,
+                RegionBlur = nint.Zero,
+                TransitionOnMaximized = 1
+            };
             Interop.Dwm.DwmEnableBlurBehindWindow(windowPointer, ref blurBehind)
                 .ThrowOnError(nameof(Interop.Dwm.DwmEnableBlurBehindWindow));
 
+            // next, use acrylic/mica blur if possible
             ApplyWindowBlur(windowPointer, WindowAccent.AcrylicBlurBehind);
         }
 
@@ -251,7 +273,7 @@ public partial class RenderService(IApplicationRenderService applicationRenderSe
         // try and enable blur using the "new" Mica/Acrylic approach for newer Windows (8 and higher) versions
         AccentPolicy policy = new()
         {
-            WindowAccent = windowAccent,
+            WindowAccent = (int)windowAccent,
             AccentFlags = 0,
             GradientColor = 0x00000000,
             AnimationId = 0
@@ -263,7 +285,7 @@ public partial class RenderService(IApplicationRenderService applicationRenderSe
         // create the data structure for the P/Invoke call
         WindowCompositionAttributeData data = new()
         {
-            Attribute = WindowCompositionAttribute.WCA_ACCENT_POLICY,
+            Attribute = (int)WindowCompositionAttribute.WCA_ACCENT_POLICY,
             Data = policyHandle.AddrOfPinnedObject(),
             SizeOfData = Marshal.SizeOf<AccentPolicy>()
         };

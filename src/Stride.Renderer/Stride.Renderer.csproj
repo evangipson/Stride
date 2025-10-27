@@ -34,6 +34,8 @@
     <Compile Include="Models\Paint.Windows.cs" />
     <Compile Include="Models\Point.Windows.cs" />
     <Compile Include="Models\Rectangle.Windows.cs" />
+    <Compile Include="Models\Reserved32Bytes.Windows.cs" />
+    <Compile Include="Models\Reserved256Bytes.Windows.cs" />
     <Compile Include="Models\WindowAccentPolicy.Windows.cs" />
     <Compile Include="Models\WindowCompositionAttributeData.Windows.cs" />
     <Compile Include="Models\WindowMessenger.Windows.cs" />

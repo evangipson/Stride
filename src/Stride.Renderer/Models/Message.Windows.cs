@@ -34,9 +34,14 @@ public struct Message
     public uint Time;
 
     /// <summary>
-    /// The cursor position, in screen coordinates, when the message was posted.
+    /// The X screen coordinate of the cursor when the message was posted.
     /// </summary>
-    public Point CursorPosition;
+    public int CursorPositionX;
+
+    /// <summary>
+    /// The Y screen coordinate of the cursor when the message was posted.
+    /// </summary>
+    public int CursorPositionY;
 
     /// <summary>
     /// Reserved, should be ignored.
